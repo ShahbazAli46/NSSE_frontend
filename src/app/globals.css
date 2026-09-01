@@ -1,0 +1,128 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Jameel Noori Nastaleeq';
+  src: url('/fonts/jameel-noori-nastaleeq.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --primary-900: #062618;
+  --primary-800: #0B462C;
+  --primary-700: #0F5A38;
+  --primary-600: #147247;
+  --primary-500: #198754;
+  --primary-100: #E6F4ED;
+  --primary-50: #F2F9F5;
+
+  --gold-800: #8E6E20;
+  --gold-700: #A88329;
+  --gold-600: #C5A059;
+  --gold-500: #D4AF37;
+  --gold-400: #E6C86E;
+  --gold-100: #FAF4E3;
+  --gold-50: #FDF9EE;
+
+  --slate-900: #0F172A;
+  --slate-800: #1E293B;
+  --slate-700: #334155;
+  --slate-600: #475569;
+  --slate-400: #94A3B8;
+  --slate-200: #E2E8F0;
+  --slate-100: #F1F5F9;
+
+  --bg-cream: #F8FAF8;
+  --card-glass: rgba(255, 255, 255, 0.94);
+  --border-subtle: rgba(11, 70, 44, 0.12);
+  --shadow-executive: 0 20px 45px -10px rgba(11, 70, 44, 0.18), 0 10px 20px -5px rgba(0, 0, 0, 0.06);
+  --shadow-gold: 0 10px 25px -5px rgba(197, 160, 89, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--bg-cream);
+  color: var(--slate-800);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-urdu {
+  font-family: 'Jameel Noori Nastaleeq', 'Noto Nastaliq Urdu', serif;
+  line-height: 1.8;
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+/* Institutional Background Grid & Ambient Glows */
+.gov-bg-pattern {
+  background-color: #F8FAF8;
+  background-image: 
+    radial-gradient(at 10% 10%, rgba(11, 70, 44, 0.08) 0px, transparent 50%),
+    radial-gradient(at 90% 15%, rgba(197, 160, 89, 0.12) 0px, transparent 50%),
+    radial-gradient(at 50% 90%, rgba(11, 70, 44, 0.06) 0px, transparent 50%),
+    linear-gradient(to right, rgba(11, 70, 44, 0.03) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(11, 70, 44, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+}
+
+/* Glassmorphism Card */
+.executive-glass-card {
+  background: var(--card-glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow-executive);
+}
+
+/* Gold Shimmer Button */
+.btn-emerald-gold {
+  background: linear-gradient(135deg, #0B462C 0%, #062618 100%);
+  border: 1.5px solid var(--gold-600);
+  color: #FFFFFF;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 15px rgba(11, 70, 44, 0.25);
+}
+
+.btn-emerald-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(11, 70, 44, 0.35), 0 0 15px rgba(197, 160, 89, 0.4);
+  border-color: var(--gold-400);
+}
+
+.btn-emerald-gold:active {
+  transform: translateY(0);
+}
+
+/* Role Selector Tile */
+.role-tile {
+  transition: all 0.25s ease;
+  border: 1.5px solid var(--slate-200);
+  background: #FFFFFF;
+}
+
+.role-tile:hover {
+  border-color: var(--gold-600);
+  background: var(--primary-50);
+  transform: translateY(-2px);
+}
+
+.role-tile.active {
+  border-color: var(--primary-800);
+  background: linear-gradient(135deg, #FAFDFB 0%, #EBF5F0 100%);
+  box-shadow: 0 4px 12px rgba(11, 70, 44, 0.12);
+}
