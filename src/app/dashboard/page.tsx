@@ -5,6 +5,7 @@ import { getStoredUser, User } from '@/lib/api';
 import SuperAdminDashboard from '@/components/SuperAdminDashboard';
 import AccountantDashboard from '@/components/AccountantDashboard';
 import PrincipalDashboard from '@/components/PrincipalDashboard';
+import TeacherDashboard from '@/components/TeacherDashboard';
 import DirectorPortalPage from '@/app/director/page';
 import { RefreshCw } from 'lucide-react';
 
@@ -30,6 +31,11 @@ export default function DashboardPage() {
   // Principal View: Campus Command Center & Order Requisitions
   if (user?.role === 'principal') {
     return <PrincipalDashboard currentUser={user} />;
+  }
+
+  // Teacher View: Personal Profile & Faculty Member Dashboard
+  if (user?.role === 'teacher') {
+    return <TeacherDashboard currentUser={user} />;
   }
 
   // Chairman & Director View: Executive Oversight & Partners Equity Cockpit

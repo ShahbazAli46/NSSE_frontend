@@ -20,7 +20,8 @@ import {
   LayoutDashboard,
   PieChart,
   BarChart3,
-  CheckSquare
+  CheckSquare,
+  GraduationCap
 } from 'lucide-react';
 import FloatingChatWidget from '@/components/chat/FloatingChatWidget';
 
@@ -91,8 +92,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ]
     },
     {
-      title: 'INSTITUTIONAL GOVERNANCE',
+      title: 'FACULTY & GOVERNANCE',
       items: [
+        { 
+          label: 'My Faculty Profile', 
+          href: '/dashboard', 
+          icon: GraduationCap,
+          roles: ['teacher']
+        },
         { 
           label: 'Staff & Role Directory', 
           href: '/dashboard', 

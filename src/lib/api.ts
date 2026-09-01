@@ -7,6 +7,40 @@ export interface User {
   role: 'admin' | 'director' | 'chairman' | 'accountant' | 'principal' | 'super_admin' | 'hr_accountant' | 'teacher' | string;
   is_active?: boolean;
 }
+export interface TeacherAllowance {
+  title: string;
+  amount: number;
+}
+
+export interface Teacher {
+  id: number;
+  user_id?: number;
+  name: string;
+  father_name?: string;
+  cnic?: string;
+  contact_number?: string;
+  emergency_number?: string;
+  qualification?: string;
+  teaching_since?: string;
+  profile_picture?: string;
+  profile_picture_url?: string;
+  address?: string;
+  city?: string;
+  date_of_joining?: string;
+  salary: number | string;
+  allowances?: TeacherAllowance[] | null;
+  total_allowances?: number;
+  gross_salary?: number;
+  status: 'active' | 'on_leave' | 'inactive';
+  created_at?: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    is_active?: boolean;
+  };
+}
 
 export type AmountTier = 1 | 2 | 3 | 4;
 export type TierColor = 'green' | 'blue' | 'orange' | 'red';
@@ -323,6 +357,11 @@ export const api = {
       method: 'DELETE',
     }),
   postForm: <T = any>(endpoint: string, formData: FormData) =>
+    apiRequest<T>(endpoint, {
+      method: 'POST',
+      body: formData,
+    }),
+  postFormData: <T = any>(endpoint: string, formData: FormData) =>
     apiRequest<T>(endpoint, {
       method: 'POST',
       body: formData,
