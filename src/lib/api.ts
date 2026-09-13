@@ -31,6 +31,10 @@ export interface Teacher {
   allowances?: TeacherAllowance[] | null;
   total_allowances?: number;
   gross_salary?: number;
+  payment_method?: 'bank' | 'cash';
+  bank_name?: string | null;
+  account_title?: string | null;
+  account_number?: string | null;
   status: 'active' | 'on_leave' | 'inactive';
   created_at?: string;
   user?: {
@@ -40,6 +44,184 @@ export interface Teacher {
     role: string;
     is_active?: boolean;
   };
+}
+
+export interface StaffMember {
+  id: number;
+  user_id?: number;
+  name: string;
+  designation: string;
+  father_name?: string;
+  cnic?: string;
+  contact_number?: string;
+  emergency_number?: string;
+  address?: string;
+  city?: string;
+  date_of_joining?: string;
+  salary: number | string;
+  allowances?: TeacherAllowance[] | null;
+  total_allowances?: number;
+  gross_salary?: number;
+  payment_method?: 'bank' | 'cash';
+  bank_name?: string | null;
+  account_title?: string | null;
+  account_number?: string | null;
+  status: 'active' | 'on_leave' | 'inactive';
+  profile_picture?: string;
+  profile_picture_url?: string;
+  created_at?: string;
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+    role: string;
+    is_active?: boolean;
+  };
+}
+
+export interface AttendanceRecord {
+  id?: number;
+  status: 'present' | 'late' | 'absent' | 'on_leave';
+  check_in_time?: string | null;
+  check_out_time?: string | null;
+  remarks?: string | null;
+  marked_by?: number | null;
+}
+
+export interface AttendanceRosterItem {
+  key: string;
+  staff_type: 'teacher' | 'non_teaching';
+  staff_id: number;
+  user_id?: number | null;
+  name: string;
+  category_label: string;
+  designation: string;
+  cnic?: string | null;
+  contact_number?: string | null;
+  profile_picture_url?: string | null;
+  payment_method?: 'bank' | 'cash';
+  bank_name?: string | null;
+  account_title?: string | null;
+  account_number?: string | null;
+  staff_status: 'active' | 'on_leave' | 'inactive';
+  attendance?: AttendanceRecord | null;
+}
+
+export interface AttendanceStats {
+  total_staff: number;
+  marked_count: number;
+  unmarked_count: number;
+  present_count: number;
+  late_count: number;
+  absent_count: number;
+  on_leave_count: number;
+}
+
+export interface PayrollAdjustment {
+  title: string;
+  amount: number;
+}
+
+export interface PayrollItem {
+  id: number;
+  month: string;
+  staff_type: 'teacher' | 'non_teaching';
+  staff_id: number;
+  staff_name: string;
+  designation: string;
+  base_salary: number | string;
+  allowances?: TeacherAllowance[] | null;
+  total_allowances: number | string;
+  bonuses?: PayrollAdjustment[] | null;
+  total_bonuses?: number | string;
+  gross_salary: number | string;
+  total_working_days: number;
+  present_days: number;
+  late_days: number;
+  absent_days: number;
+  leave_days: number;
+  allowed_leaves?: number;
+  deductible_days?: number;
+  daily_rate?: number | string;
+  absent_deduction: number | string;
+  advance_deduction?: number | string;
+  custom_deductions?: PayrollAdjustment[] | null;
+  other_deductions: number | string;
+  net_salary: number | string;
+  payment_method: 'bank' | 'cash';
+  bank_name?: string | null;
+  account_title?: string | null;
+  account_number?: string | null;
+  remarks?: string | null;
+  status: 'generated' | 'paid';
+  paid_at?: string | null;
+  staff_profile?: Teacher | StaffMember;
+  created_at?: string;
+}
+
+export interface PayrollSummaryStats {
+  total_staff: number;
+  total_gross: number;
+  total_deductions: number;
+  total_net_payout: number;
+  bank_payout_total: number;
+  cash_payout_total: number;
+  paid_count: number;
+  unpaid_count: number;
+}
+
+export interface AdvanceSalaryRequest {
+  id: number;
+  staff_type: 'teacher' | 'non_teaching';
+  staff_id: number;
+  user_id?: number | null;
+  staff_name: string;
+  designation: string;
+  amount: number;
+  reason: string;
+  repayment_plan?: string | null;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewed_by?: number | null;
+  reviewed_by_name?: string | null;
+  reviewed_by_role?: string | null;
+  reviewed_at?: string | null;
+  review_remarks?: string | null;
+  rejection_reason?: string | null;
+  disbursement_status: string;
+  total_recovered: number;
+  remaining_balance: number;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface LeaveRequest {
+  id: number;
+  user_id?: number | null;
+  staff_type: 'teacher' | 'non_teaching';
+  staff_id: number;
+  staff_name: string;
+  designation?: string | null;
+  leave_type: 'casual' | 'sick' | 'emergency' | 'annual' | 'maternity' | 'other';
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  approved_by?: number | null;
+  approver_name?: string | null;
+  approver_remarks?: string | null;
+  approved_at?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface LeaveStats {
+  total_requests: number;
+  pending_count: number;
+  approved_count: number;
+  rejected_count: number;
+  total_approved_days: number;
+  active_leaves_today: number;
 }
 
 export type AmountTier = 1 | 2 | 3 | 4;
@@ -57,7 +239,7 @@ export interface Expense {
   receipt_url?: string;
   payment_method?: string;
   payment_reference?: string;
-  expense_type?: 'general' | 'capital';
+  expense_type?: 'general' | 'director' | 'capital';
   director_id?: number;
   director?: { id: number; name: string };
   cheque_id?: number;
@@ -154,16 +336,68 @@ export interface Director {
   phone?: string;
   email?: string;
   share_percentage: number;
+  capital_share_percentage?: number;
+  expected_monthly_contribution?: number;
   bank_name?: string;
   bank_account_no?: string;
   bank_iban?: string;
   status: 'active' | 'inactive';
   net_capital?: number;
   total_capital_injected: number;
+  total_expenses_paid?: number;
+  total_direct_injected?: number;
   total_capital_consumed: number;
   total_profit_earned: number;
   total_withdrawn: number;
   live_balance: number;
+}
+
+export interface SettlementTransfer {
+  from_director_id: number;
+  to_director_id: number;
+  amount: number;
+  notes?: string;
+}
+
+export interface PnlDirector {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  cnic?: string;
+  net_capital: number;
+  live_balance?: number;
+  share_percentage: number;
+  expected_monthly_contribution: number;
+  month_paid_amount: number;
+  contribution_variance: number;
+  is_surplus: boolean;
+  loan_amount: number;
+  shortfall_amount: number;
+  profit_share: number;
+  base_profit_share?: number;
+  bank_name?: string;
+  bank_account_no?: string;
+}
+
+export interface PnlSummary {
+  total_govt_income: number;
+  total_general_expenses: number;
+  remaining_amount: number;
+  remaining_profit: number;
+  net_margin_percentage: number;
+  total_expected_contributions?: number;
+  total_paid_in_month?: number;
+  is_distributed?: boolean;
+  distribution?: {
+    id: number;
+    period_month: string;
+    total_profit_pool: number;
+    distributed_at: string;
+    distributed_by_name?: string;
+    notes?: string;
+    breakdown?: any;
+  } | null;
 }
 
 export interface DirectorTransactionItem {
@@ -189,6 +423,7 @@ export interface ProfitDistributionItem {
   period_month: string;
   total_profit_pool: number;
   notes?: string;
+  distribution_breakdown?: any;
   created_at: string;
   distributor?: { id: number; name: string };
 }
@@ -197,11 +432,14 @@ export interface DirectorSummary {
   total_directors: number;
   total_net_capital?: number;
   total_capital_injected: number;
+  total_expenses_paid?: number;
+  total_direct_injected?: number;
   total_capital_consumed: number;
   total_profit_allocated: number;
   total_withdrawn: number;
   total_undrawn_pool: number;
   total_share_percentage: number;
+  total_expected_contributions?: number;
 }
 
 export interface FinancialSummary {

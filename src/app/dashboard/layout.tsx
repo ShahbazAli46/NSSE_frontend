@@ -21,7 +21,12 @@ import {
   PieChart,
   BarChart3,
   CheckSquare,
-  GraduationCap
+  GraduationCap,
+  UserCheck,
+  Wallet,
+  DollarSign,
+  Banknote,
+  Calendar
 } from 'lucide-react';
 import FloatingChatWidget from '@/components/chat/FloatingChatWidget';
 
@@ -30,6 +35,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [isLoggingOut, setIsLoggingOut] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [isDesktopSidebarOpen, setIsDesktopSidebarOpen] = useState<boolean>(true);
+  const [pendingAdvCount, setPendingAdvCount] = useState<number>(0);
+  const [pendingDisburseCount, setPendingDisburseCount] = useState<number>(0);
+  const [pendingLeaveCount, setPendingLeaveCount] = useState<number>(0);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -41,6 +49,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
     setUser(stored);
   }, [router]);
+
+  const fetchNotificationBadges = async () => {
+    try {
+      const [resAdv, resLeaves]: any = await Promise.all([
+        api.get('/advance-salary-requests').catch(() => ({ stats: {} })),
+        api.get('/leave-requests').catch(() => ({ stats: {} })),
+      ]);
+
+      if (resAdv?.stats) {
+        setPendingAdvCount(Number(resAdv.stats.pending_count || 0));
+        setPendingDisburseCount(Number(resAdv.stats.pending_disbursement_count || 0));
+      }
+      if (resLeaves?.stats) {
+        setPendingLeaveCount(Number(resLeaves.stats.pending_count || 0));
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    fetchNotificationBadges();
+    const interval = setInterval(fetchNotificationBadges, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
@@ -68,8 +102,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     chairman: 'Chairman of the Board',
     accountant: 'Finance & Accounts Officer',
     hr_accountant: 'Finance & Accounts Officer',
+    hr: 'Human Resources (HR)',
     principal: 'Principal / Headmaster',
     teacher: 'Faculty Member',
+    non_teaching_staff: 'Staff Member',
   }[user.role] || user.role;
 
   // Sidebar Menu Items by Category
@@ -92,6 +128,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       ]
     },
     {
+      title: 'HR & WORKFORCE DESK',
+      items: [
+        { 
+          label: 'Staff Attendance Desk', 
+          href: '/dashboard', 
+          icon: UserCheck,
+          roles: ['hr']
+        },
+      ]
+    },
+    {
       title: 'FACULTY & GOVERNANCE',
       items: [
         { 
@@ -101,16 +148,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           roles: ['teacher']
         },
         { 
+          label: 'My Salary & Payslips', 
+          href: '/dashboard/salaries', 
+          icon: DollarSign,
+          roles: ['teacher']
+        },
+        { 
           label: 'Staff & Role Directory', 
           href: '/dashboard', 
           icon: Users,
           roles: ['super_admin', 'admin', 'chairman', 'director', 'principal']
         },
         { 
+          label: 'Advance Salary Requests', 
+          href: '/dashboard/advances', 
+          icon: Wallet,
+          roles: ['principal', 'director', 'chairman', 'super_admin', 'admin'],
+          badgeCount: pendingAdvCount,
+          hasBlinkingDot: pendingAdvCount > 0,
+        },
+        { 
+          label: 'Staff Leave Requests', 
+          href: '/dashboard/leaves', 
+          icon: Calendar,
+          roles: ['principal', 'hr', 'director', 'chairman', 'super_admin', 'admin'],
+          badgeCount: pendingLeaveCount,
+          hasBlinkingDot: pendingLeaveCount > 0,
+        },
+        { 
           label: 'Tasks & Action Items', 
           href: '/dashboard/tasks', 
           icon: CheckSquare,
-          roles: ['super_admin', 'admin', 'chairman', 'director', 'principal', 'accountant', 'hr_accountant', 'teacher']
+          roles: ['super_admin', 'admin', 'chairman', 'director', 'principal', 'accountant', 'hr_accountant', 'hr', 'teacher']
         },
       ]
     },
@@ -122,6 +191,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           href: '/dashboard', 
           icon: LayoutDashboard,
           roles: ['accountant', 'hr_accountant']
+        },
+        { 
+          label: 'Staff Salaries & Payroll', 
+          href: '/dashboard/salaries', 
+          icon: DollarSign,
+          roles: ['accountant', 'hr_accountant', 'hr', 'director', 'principal', 'super_admin', 'admin', 'chairman']
+        },
+        { 
+          label: 'Advance Disbursements', 
+          href: '/dashboard/advances', 
+          icon: Wallet,
+          roles: ['accountant', 'hr_accountant'],
+          badgeCount: pendingDisburseCount,
+          hasBlinkingDot: pendingDisburseCount > 0,
         },
         { 
           label: 'Expense Ledger & Vouchers', 
@@ -250,7 +333,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                       const isActive = pathname === item.href;
                       return (
                         <Link
-                          key={item.href}
+                          key={item.href + item.label}
                           href={item.href}
                           onClick={() => {
                             if (typeof window !== 'undefined' && window.innerWidth < 1024) {
@@ -266,12 +349,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <Icon className={`w-4 h-4 ${
+                            <Icon className={`w-4 h-4 shrink-0 ${
                               isActive ? 'text-[#C5A059]' : 'text-gray-400 group-hover:text-gray-600'
                             }`} />
-                            <span>{item.label}</span>
+                            <span className="truncate">{item.label}</span>
                           </div>
-                          {isActive && <ChevronRight className="w-3.5 h-3.5 text-[#C5A059]" />}
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            {item.hasBlinkingDot && (
+                              <span className="relative flex h-2.5 w-2.5">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-80"></span>
+                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+                              </span>
+                            )}
+                            {item.badgeCount !== undefined && item.badgeCount > 0 && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                isActive 
+                                  ? 'bg-[#C5A059] text-gray-900' 
+                                  : 'bg-amber-100 text-amber-900 border border-amber-300'
+                              }`}>
+                                {item.badgeCount}
+                              </span>
+                            )}
+                            {isActive && <ChevronRight className="w-3.5 h-3.5 text-[#C5A059]" />}
+                          </div>
                         </Link>
                       );
                     })}

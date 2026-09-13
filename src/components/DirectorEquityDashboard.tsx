@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { 
   api, 
   downloadBlob, 
   formatDisplayDate, 
+  getStoredUser,
+  User,
   Director, 
   DirectorTransactionItem, 
   DirectorSummary, 
@@ -35,7 +38,9 @@ import {
   Calendar,
   Sparkles,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  Edit3,
+  Plus
 } from 'lucide-react';
 import ThreeDPieChart, { THREE_D_COLORS } from './ThreeDPieChart';
 
@@ -47,6 +52,12 @@ const PARTNER_COLORS = THREE_D_COLORS.map(c => ({
 }));
 
 export default function DirectorEquityDashboard() {
+  const [isMounted, setIsMounted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
   const [directors, setDirectors] = useState<Director[]>([]);
   const [summary, setSummary] = useState<DirectorSummary | null>(null);
@@ -66,6 +77,8 @@ export default function DirectorEquityDashboard() {
 
   // Modals
   const [isAddDirectorOpen, setIsAddDirectorOpen] = useState(false);
+  const [isEditDirectorOpen, setIsEditDirectorOpen] = useState(false);
+  const [editingDirector, setEditingDirector] = useState<Director | null>(null);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isCapitalExpenseOpen, setIsCapitalExpenseOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -73,13 +86,28 @@ export default function DirectorEquityDashboard() {
   // Form States - Add Director
   const [newDirName, setNewDirName] = useState('');
   const [newDirShare, setNewDirShare] = useState('');
+  const [newDirExpected, setNewDirExpected] = useState('');
   const [newDirCnic, setNewDirCnic] = useState('');
   const [newDirPhone, setNewDirPhone] = useState('');
   const [newDirEmail, setNewDirEmail] = useState('');
   const [newDirBank, setNewDirBank] = useState('');
   const [newDirAcc, setNewDirAcc] = useState('');
+  const [newDirIban, setNewDirIban] = useState('');
   const [addDirSubmitting, setAddDirSubmitting] = useState(false);
   const [addDirError, setAddDirError] = useState('');
+
+  // Form States - Edit Director
+  const [editDirName, setEditDirName] = useState('');
+  const [editDirShare, setEditDirShare] = useState('');
+  const [editDirExpected, setEditDirExpected] = useState('');
+  const [editDirCnic, setEditDirCnic] = useState('');
+  const [editDirPhone, setEditDirPhone] = useState('');
+  const [editDirEmail, setEditDirEmail] = useState('');
+  const [editDirBank, setEditDirBank] = useState('');
+  const [editDirAcc, setEditDirAcc] = useState('');
+  const [editDirIban, setEditDirIban] = useState('');
+  const [editDirSubmitting, setEditDirSubmitting] = useState(false);
+  const [editDirError, setEditDirError] = useState('');
 
   // Form States - Deposit Capital
   const [depDirectorId, setDepDirectorId] = useState<string>('');
@@ -98,7 +126,8 @@ export default function DirectorEquityDashboard() {
   const [capCategoryId, setCapCategoryId] = useState('');
   const [capAmount, setCapAmount] = useState('');
   const [capDate, setCapDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [capMethod, setCapMethod] = useState('Capital Account');
+  const [capMethod, setCapMethod] = useState('Director Personal Bank Transfer');
+  const [capRef, setCapRef] = useState('');
   const [capNotes, setCapNotes] = useState('');
   const [capReceipt, setCapReceipt] = useState<File | null>(null);
   const [capSubmitting, setCapSubmitting] = useState(false);
@@ -124,11 +153,21 @@ export default function DirectorEquityDashboard() {
         api.get('/categories'),
       ]);
       if (res.status === 'fulfilled') {
-        setDirectors(res.value.data || []);
+        const list = res.value.data || [];
+        setDirectors(list);
         setSummary(res.value.summary || null);
         setRecentDistributions(res.value.recent_distributions || []);
-        if (res.value.data && res.value.data.length > 0 && !selectedDirector) {
-          setSelectedDirector(res.value.data[0]);
+        
+        const stored = getStoredUser();
+        const myDir = list.find((d: any) => d.user_id === stored?.id || d.email === stored?.email);
+        if (myDir) {
+          setCapDirectorId(String(myDir.id));
+          setDepDirectorId(String(myDir.id));
+          setSelectedDirector(myDir);
+        } else if (list.length > 0 && !selectedDirector) {
+          setSelectedDirector(list[0]);
+          setCapDirectorId(String(list[0].id));
+          setDepDirectorId(String(list[0].id));
         }
       }
       if (catRes.status === 'fulfilled') {
@@ -142,6 +181,7 @@ export default function DirectorEquityDashboard() {
   };
 
   useEffect(() => {
+    setCurrentUser(getStoredUser());
     fetchData();
   }, []);
 
@@ -198,25 +238,73 @@ export default function DirectorEquityDashboard() {
       await api.post('/directors', {
         name: newDirName,
         share_percentage: parseFloat(newDirShare),
+        expected_monthly_contribution: newDirExpected ? parseFloat(newDirExpected) : 0,
         cnic: newDirCnic,
         phone: newDirPhone,
         email: newDirEmail,
         bank_name: newDirBank,
         bank_account_no: newDirAcc,
+        bank_iban: newDirIban,
       });
       setIsAddDirectorOpen(false);
       setNewDirName('');
       setNewDirShare('');
+      setNewDirExpected('');
       setNewDirCnic('');
       setNewDirPhone('');
       setNewDirEmail('');
       setNewDirBank('');
       setNewDirAcc('');
+      setNewDirIban('');
       fetchData();
     } catch (err: any) {
       setAddDirError(err.message || 'Failed to add director.');
     } finally {
       setAddDirSubmitting(false);
+    }
+  };
+
+  // Open Edit Director Modal
+  const handleOpenEditDirector = (director: Director) => {
+    setEditingDirector(director);
+    setEditDirName(director.name);
+    setEditDirShare(String(director.share_percentage));
+    setEditDirExpected(String(director.expected_monthly_contribution || ''));
+    setEditDirCnic(director.cnic || '');
+    setEditDirPhone(director.phone || '');
+    setEditDirEmail(director.email || '');
+    setEditDirBank(director.bank_name || '');
+    setEditDirAcc(director.bank_account_no || '');
+    setEditDirIban(director.bank_iban || '');
+    setEditDirError('');
+    setIsEditDirectorOpen(true);
+  };
+
+  // Edit Director Submit
+  const handleEditDirector = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDirector) return;
+    setEditDirError('');
+    setEditDirSubmitting(true);
+    try {
+      await api.put(`/directors/${editingDirector.id}`, {
+        name: editDirName,
+        share_percentage: parseFloat(editDirShare),
+        expected_monthly_contribution: editDirExpected ? parseFloat(editDirExpected) : 0,
+        cnic: editDirCnic,
+        phone: editDirPhone,
+        email: editDirEmail,
+        bank_name: editDirBank,
+        bank_account_no: editDirAcc,
+        bank_iban: editDirIban,
+      });
+      setIsEditDirectorOpen(false);
+      setEditingDirector(null);
+      fetchData();
+    } catch (err: any) {
+      setEditDirError(err.message || 'Failed to update director.');
+    } finally {
+      setEditDirSubmitting(false);
     }
   };
 
@@ -263,6 +351,7 @@ export default function DirectorEquityDashboard() {
       formData.append('amount', capAmount);
       formData.append('date', capDate);
       formData.append('payment_method', capMethod);
+      if (capRef) formData.append('reference_no', capRef);
       if (capNotes) formData.append('notes', capNotes);
       if (capReceipt) formData.append('receipt', capReceipt);
 
@@ -271,6 +360,7 @@ export default function DirectorEquityDashboard() {
       setCapTitle('');
       setCapCategoryId('');
       setCapAmount('');
+      setCapRef('');
       setCapNotes('');
       setCapReceipt(null);
       fetchData();
@@ -402,6 +492,8 @@ export default function DirectorEquityDashboard() {
   // Selected Director for Withdrawal
   const activeWithdrawDirector = directors.find(d => String(d.id) === withDirectorId);
 
+  const totalSharePct = Math.round(directors.reduce((sum, d) => sum + Number(d.share_percentage || 0), 0) * 100) / 100;
+
   return (
     <div className="space-y-6">
       {/* ================= 🥧 TOP ACTIONS & EQUITY BANNER ================= */}
@@ -417,46 +509,79 @@ export default function DirectorEquityDashboard() {
                 Executive Portal
               </span>
             </div>
-            <p className="text-xs text-gray-500 font-medium mt-0.5">
-              Dedicated Capital Accounts, Asset & Infrastructure Usage, and Partner Ledger
-            </p>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <p className="text-xs text-gray-500 font-medium">
+                Dedicated Capital Accounts, Asset Investments & Partner Equity
+              </p>
+              {directors.length > 0 && (
+                totalSharePct === 100 ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    100% Share Configured
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    <AlertCircle className="w-3 h-3 text-amber-600" />
+                    Total Share: {totalSharePct}% (Need 100% for P&L)
+                  </span>
+                )
+              )}
+            </div>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={() => {
-              if (directors.length > 0) setDepDirectorId(String(directors[0].id));
-              setIsDepositOpen(true);
-            }}
-            className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
-          >
-            <ArrowDownLeft className="w-4 h-4" />
-            + Deposit Capital
-          </button>
+          {(currentUser?.role === 'chairman' || currentUser?.role === 'super_admin' || currentUser?.role === 'admin') && (
+            <button
+              onClick={() => setIsAddDirectorOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-[#0B462C] hover:bg-[#093823] text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              + Add Partner
+            </button>
+          )}
 
           <button
             onClick={() => {
-              if (directors.length > 0) setCapDirectorId(String(directors[0].id));
+              if (directors.length > 0) {
+                const myDir = directors.find(d => d.user_id === currentUser?.id || d.email === currentUser?.email);
+                setCapDirectorId(myDir ? String(myDir.id) : String(directors[0].id));
+              }
               setIsCapitalExpenseOpen(true);
             }}
-            className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-xs flex items-center gap-2 transition-all cursor-pointer ring-2 ring-purple-700/20"
           >
             <Building className="w-4 h-4" />
-            🏗️ Record Capital Usage / Expense
+            + Pay Director Expense (Adds Capital)
           </button>
 
           <button
             onClick={() => {
-              if (directors.length > 0) setWithDirectorId(String(directors[0].id));
-              setIsWithdrawOpen(true);
+              if (directors.length > 0) {
+                const myDir = directors.find(d => d.user_id === currentUser?.id || d.email === currentUser?.email);
+                setDepDirectorId(myDir ? String(myDir.id) : String(directors[0].id));
+              }
+              setIsDepositOpen(true);
             }}
-            className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-3.5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <ArrowUpRight className="w-4 h-4" />
-            - Withdraw Funds
+            <ArrowDownLeft className="w-4 h-4" />
+            + Direct Capital Deposit
           </button>
+
+          {(currentUser?.role === 'chairman' || currentUser?.role === 'super_admin' || currentUser?.role === 'admin') && (
+            <button
+              onClick={() => {
+                if (directors.length > 0) setWithDirectorId(String(directors[0].id));
+                setIsWithdrawOpen(true);
+              }}
+              className="px-3.5 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <ArrowUpRight className="w-4 h-4" />
+              - Withdraw Funds
+            </button>
+          )}
         </div>
       </div>
 
@@ -465,7 +590,7 @@ export default function DirectorEquityDashboard() {
         directors={directors}
         selectedDirector={selectedDirector}
         onSelectDirector={setSelectedDirector}
-        totalCapital={summary ? Number(summary.total_net_capital ?? (summary.total_capital_injected - summary.total_withdrawn)) : 0}
+        totalCapital={summary ? Number(summary.total_net_capital ?? summary.total_capital_injected) : 0}
       />
 
       {/* ================= 📊 4 EXECUTIVE METRIC CARDS ================= */}
@@ -473,8 +598,8 @@ export default function DirectorEquityDashboard() {
         {/* Card 1: Total Capital Injected */}
         <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Capital Injected</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold text-xs">
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Total Director Capital</span>
+            <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold text-xs">
               💎
             </div>
           </div>
@@ -484,24 +609,24 @@ export default function DirectorEquityDashboard() {
             </span>
           </div>
           <p className="text-[11px] text-gray-400 font-medium mt-1">
-            Net Capital Holding: Rs. {summary ? Number(summary.total_net_capital ?? (summary.total_capital_injected - summary.total_withdrawn)).toLocaleString('en-PK') : '0'}
+            Net Capital Holding: Rs. {summary ? Number(summary.total_net_capital ?? summary.total_capital_injected).toLocaleString('en-PK') : '0'}
           </p>
         </div>
 
-        {/* Card 2: Total Capital Consumed */}
+        {/* Card 2: Total Director Expenses Paid */}
         <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Capital Consumed</span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider">Director Expenses Paid</span>
             <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold text-xs">
               🏗️
             </div>
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span className="text-xl font-black font-mono text-amber-700">
-              Rs. {summary ? Number(summary.total_capital_consumed).toLocaleString('en-PK') : '0'}
+              Rs. {summary ? Number(summary.total_expenses_paid ?? summary.total_capital_consumed).toLocaleString('en-PK') : '0'}
             </span>
           </div>
-          <p className="text-[11px] text-gray-400 font-medium mt-1">Assets, Construction & Usage</p>
+          <p className="text-[11px] text-gray-400 font-medium mt-1">Assets, Solar, MOU & Projects</p>
         </div>
 
         {/* Card 3: Total Withdrawn */}
@@ -517,24 +642,24 @@ export default function DirectorEquityDashboard() {
               Rs. {summary ? Number(summary.total_withdrawn).toLocaleString('en-PK') : '0'}
             </span>
           </div>
-          <p className="text-[11px] text-gray-400 font-medium mt-1">Disbursed Drawings to Date</p>
+          <p className="text-[11px] text-gray-400 font-medium mt-1">Disbursed Partner Drawings</p>
         </div>
 
         {/* Card 4: Net Available Capital Reserve */}
         <div className="bg-[#0B462C] text-white border border-[#0B462C] rounded-2xl p-4 shadow-sm relative overflow-hidden">
           <div className="relative z-10">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Available Capital Reserve</span>
+              <span className="text-[11px] font-bold text-emerald-200 uppercase tracking-wider">Available Capital Holding</span>
               <div className="w-8 h-8 rounded-xl bg-white/10 text-white flex items-center justify-center font-bold text-xs">
                 🏦
               </div>
             </div>
             <div className="mt-2 flex items-baseline gap-1">
               <span className="text-2xl font-black font-mono text-white">
-                Rs. {summary ? Number(summary.total_undrawn_pool).toLocaleString('en-PK') : '0'}
+                Rs. {summary ? Number(summary.total_undrawn_pool ?? summary.total_net_capital).toLocaleString('en-PK') : '0'}
               </span>
             </div>
-            <p className="text-[11px] text-emerald-200/90 font-medium mt-1">Net Undrawn Partner Funds</p>
+            <p className="text-[11px] text-emerald-200/90 font-medium mt-1">Active Partner Equity Valuation</p>
           </div>
         </div>
       </div>
@@ -544,7 +669,7 @@ export default function DirectorEquityDashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-base font-black text-gray-900">Partner Capital Accounts & Usage Ledgers</h3>
-            <p className="text-xs text-gray-500 font-medium">Individual deposited capital, expenditures consumed, and remaining balances</p>
+            <p className="text-xs text-gray-500 font-medium">Out-of-pocket expenses funded, direct deposits, and equity holding</p>
           </div>
           <span className="text-xs font-bold text-purple-700 bg-purple-50 px-3 py-1 rounded-xl border border-purple-200">
             {directors.length} Registered Partners
@@ -585,23 +710,38 @@ export default function DirectorEquityDashboard() {
                         )}
                       </div>
                     </div>
-                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700">
-                      Active
-                    </span>
-                  </div>
-
-                  {/* Stats Grid (Injected, Consumed, Drawings) */}
-                  <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-gray-100 text-center">
-                    <div className="bg-gray-50 p-2 rounded-xl">
-                      <span className="text-[10px] text-gray-500 font-bold uppercase block">Injected</span>
-                      <span className="text-xs font-black font-mono text-gray-900 block mt-0.5 truncate" title={`Total Injected: Rs. ${Number(director.total_capital_injected).toLocaleString('en-PK')}`}>
-                        Rs. {Number(director.total_capital_injected).toLocaleString('en-PK')}
+                    <div className="flex items-center gap-1.5">
+                      {(currentUser?.role === 'chairman' || currentUser?.role === 'super_admin' || currentUser?.role === 'admin') && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenEditDirector(director);
+                          }}
+                          className="p-1 text-gray-400 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit Partner & Profit Share %"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700">
+                        Active
                       </span>
                     </div>
+                  </div>
+
+                  {/* Stats Grid (Expenses Paid, Direct Injected, Drawings) */}
+                  <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-gray-100 text-center">
                     <div className="bg-amber-50/60 p-2 rounded-xl">
-                      <span className="text-[10px] text-amber-800 font-bold uppercase block">Consumed</span>
-                      <span className="text-xs font-black font-mono text-amber-700 block mt-0.5 truncate">
-                        Rs. {Number(director.total_capital_consumed).toLocaleString('en-PK')}
+                      <span className="text-[10px] text-amber-800 font-bold uppercase block">Expenses Paid</span>
+                      <span className="text-xs font-black font-mono text-amber-700 block mt-0.5 truncate" title={`Expenses Paid: Rs. ${Number(director.total_expenses_paid ?? director.total_capital_consumed).toLocaleString('en-PK')}`}>
+                        Rs. {Number(director.total_expenses_paid ?? director.total_capital_consumed).toLocaleString('en-PK')}
+                      </span>
+                    </div>
+                    <div className="bg-gray-50 p-2 rounded-xl">
+                      <span className="text-[10px] text-gray-500 font-bold uppercase block">Deposited</span>
+                      <span className="text-xs font-black font-mono text-gray-900 block mt-0.5 truncate" title={`Direct Injected: Rs. ${Number(director.total_direct_injected ?? 0).toLocaleString('en-PK')}`}>
+                        Rs. {Number(director.total_direct_injected ?? 0).toLocaleString('en-PK')}
                       </span>
                     </div>
                     <div className="bg-rose-50/60 p-2 rounded-xl">
@@ -612,15 +752,20 @@ export default function DirectorEquityDashboard() {
                     </div>
                   </div>
 
-                  {/* Live Balance Row */}
-                  <div className="mt-3 p-3 rounded-2xl bg-[#E6F4ED] border border-[#0B462C]/20 flex items-center justify-between">
+                  {/* Live Balance & Target Row */}
+                  <div className="mt-3 p-3 rounded-2xl bg-purple-50 border border-purple-200/80 flex items-center justify-between">
                     <div>
-                      <span className="text-[10px] text-[#0B462C]/80 uppercase font-bold block">Remaining Capital</span>
-                      <span className="text-xs font-bold text-[#0B462C]">Available Funds</span>
+                      <span className="text-[10px] text-purple-700 uppercase font-bold block">Agreed Capital Target</span>
+                      <span className="text-xs font-bold text-purple-950 font-mono">
+                        Rs. {Number(director.expected_monthly_contribution || 0).toLocaleString('en-PK')}
+                      </span>
                     </div>
-                    <span className="text-base font-black font-mono text-[#0B462C]">
-                      Rs. {Number(director.live_balance).toLocaleString('en-PK')}
-                    </span>
+                    <div className="text-right">
+                      <span className="text-[10px] text-purple-700 uppercase font-bold block">Live Capital Holding</span>
+                      <span className="text-sm sm:text-base font-black font-mono text-purple-800">
+                        Rs. {Number(director.live_balance).toLocaleString('en-PK')}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
@@ -642,8 +787,8 @@ export default function DirectorEquityDashboard() {
       </div>
 
       {/* ================= 📜 STATEMENT MODAL / DRAWER ================= */}
-      {isStatementOpen && statementDirector && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+      {isStatementOpen && statementDirector && isMounted && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150">
             {/* Modal Header */}
             <div className="p-5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
@@ -824,12 +969,13 @@ export default function DirectorEquityDashboard() {
               </table>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= ➕ MODAL: DEPOSIT CAPITAL ================= */}
-      {isDepositOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {isDepositOpen && isMounted && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <h3 className="text-base font-black text-gray-900">Record Capital Injection</h3>
@@ -924,22 +1070,30 @@ export default function DirectorEquityDashboard() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* ================= 🏗️ MODAL: RECORD CAPITAL USAGE / EXPENSE ================= */}
-      {isCapitalExpenseOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {/* ================= 🏗️ MODAL: RECORD DIRECTOR-PAID EXPENSE (ADDS CAPITAL) ================= */}
+      {isCapitalExpenseOpen && isMounted && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-              <div>
-                <h3 className="text-base font-black text-gray-900">Record Capital Expense / Usage</h3>
-                <p className="text-xs text-gray-500 font-medium">Charge asset or project expense directly to a partner&apos;s capital account</p>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                  <Building className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-gray-900">Record Director-Paid Expense</h3>
+                  <p className="text-xs text-gray-500 font-medium">Out-of-pocket expense directly adds to partner capital</p>
+                </div>
               </div>
               <button onClick={() => setIsCapitalExpenseOpen(false)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+
 
             {capError && (
               <div className="mt-3 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold flex items-center gap-2">
@@ -950,27 +1104,27 @@ export default function DirectorEquityDashboard() {
 
             <form onSubmit={handleCapitalExpense} className="space-y-3.5 mt-4">
               <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">Funded by Partner / Director *</label>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Paid by Director / Partner *</label>
                 <CustomDropdown
                   options={directors.map(d => ({ 
                     value: String(d.id), 
-                    label: `${d.name} (Rs. ${Number(d.live_balance).toLocaleString('en-PK')} Available)`, 
+                    label: `${d.name} (Rs. ${Number(d.live_balance).toLocaleString('en-PK')} Capital)`, 
                     icon: '👤' 
                   }))}
                   value={capDirectorId}
                   onChange={setCapDirectorId}
                 />
                 {activeCapDirector && (
-                  <span className="text-[11px] text-amber-800 font-bold mt-1 block">
-                    Available Capital: Rs. {Number(activeCapDirector.live_balance).toLocaleString('en-PK')}
+                  <span className="text-[11px] text-purple-800 font-bold mt-1 block">
+                    Current Capital: Rs. {Number(activeCapDirector.live_balance).toLocaleString('en-PK')} • Equity Share: {activeCapDirector.share_percentage}%
                   </span>
                 )}
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">Expense Title / Description *</label>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Expense Title / Item Description *</label>
                 <CustomTextInput
-                  placeholder="e.g. Solar Inverter & Panels, Campus Renovation, Lab Equipment"
+                  placeholder="e.g. 500,000 Solar Panels, 200,000 MOU Fee, Campus Infrastructure"
                   value={capTitle}
                   onChange={setCapTitle}
                   required
@@ -979,22 +1133,30 @@ export default function DirectorEquityDashboard() {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Category</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Category (Search or Create)</label>
                   <CustomDropdown
                     options={[
-                      { value: '', label: 'Select Category', icon: '📁' },
+                      { value: '', label: 'Select or Search Category', icon: '📁' },
                       ...categories.map(c => ({ value: String(c.id), label: c.name, icon: '🏷️' }))
                     ]}
                     value={capCategoryId}
                     onChange={setCapCategoryId}
+                    searchable
+                    creatable
+                    placeholder="Select, search or type new..."
+                    onCreateOption={(newCatName) => {
+                      if (!categories.some(c => c.name.toLowerCase() === newCatName.toLowerCase())) {
+                        setCategories(prev => [...prev, { id: Date.now(), name: newCatName }]);
+                      }
+                    }}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Expense Amount (PKR) *</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Paid Amount (PKR) *</label>
                   <CustomNumberInput
                     value={capAmount}
                     onChange={setCapAmount}
-                    placeholder="e.g. 150,000"
+                    placeholder="e.g. 500,000"
                     required
                   />
                 </div>
@@ -1002,45 +1164,40 @@ export default function DirectorEquityDashboard() {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Expense Date *</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Payment Date *</label>
                   <CustomDatePicker
                     value={capDate}
                     onChange={setCapDate}
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Payment Method *</label>
-                  <CustomDropdown
-                    options={[
-                      { value: 'Capital Account', label: 'Capital Account', icon: '🏛️' },
-                      { value: 'Bank Transfer', label: 'Bank Transfer', icon: '💳' },
-                      { value: 'Cash', label: 'Cash', icon: '💵' },
-                      { value: 'Cheque', label: 'Cheque', icon: '🧾' },
-                    ]}
-                    value={capMethod}
-                    onChange={setCapMethod}
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Invoice / Reference / Cheque No.</label>
+                  <CustomTextInput
+                    placeholder="e.g. INV-2026-901 or Cheque #8812739"
+                    value={capRef}
+                    onChange={setCapRef}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">Notes / Vendor / Invoices</label>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Notes / Vendor / Scope Details</label>
                 <CustomTextInput
                   multiline
                   rows={2}
-                  placeholder="e.g. Vendor: Pak Solar Ltd, Invoice #INV-8821 for 10kW On-Grid Solar System"
+                  placeholder="e.g. Paid directly to vendor Pak Solar for 10kW On-Grid solar plates installation"
                   value={capNotes}
                   onChange={setCapNotes}
                 />
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">Upload Invoice / Receipt Slip</label>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Upload Receipt / Invoice / Payment Proof</label>
                 <input
                   type="file"
                   accept="image/*,application/pdf"
                   onChange={(e) => setCapReceipt(e.target.files ? e.target.files[0] : null)}
-                  className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-800 hover:file:bg-amber-100"
+                  className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-50 file:text-purple-800 hover:file:bg-purple-100 cursor-pointer"
                 />
               </div>
 
@@ -1055,19 +1212,21 @@ export default function DirectorEquityDashboard() {
                 <button
                   type="submit"
                   disabled={capSubmitting}
-                  className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-xs disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                 >
-                  {capSubmitting ? 'Recording Expense...' : 'Record Capital Expense'}
+                  <Building className="w-4 h-4" />
+                  {capSubmitting ? 'Recording & Crediting...' : 'Record Expense & Add Capital'}
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* ================= ➕ MODAL: WITHDRAW FUNDS ================= */}
-      {isWithdrawOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {isWithdrawOpen && isMounted && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-gray-100">
               <h3 className="text-base font-black text-gray-900">Record Director Withdrawal</h3>
@@ -1167,7 +1326,288 @@ export default function DirectorEquityDashboard() {
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ================= ➕ MODAL: ADD PARTNER / DIRECTOR ================= */}
+      {isAddDirectorOpen && isMounted && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
+                  <UserCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-gray-900">Register New Partner / Director</h3>
+                  <p className="text-xs text-gray-500 font-medium">Set profit share %, one-time capital commitment, and bank details</p>
+                </div>
+              </div>
+              <button onClick={() => setIsAddDirectorOpen(false)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {addDirError && (
+              <div className="mt-3 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {addDirError}
+              </div>
+            )}
+
+            <form onSubmit={handleAddDirector} className="space-y-3.5 mt-4">
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Partner Full Name *</label>
+                <CustomTextInput
+                  placeholder="e.g. Shahbaz Ali, Usman Ahmad"
+                  value={newDirName}
+                  onChange={setNewDirName}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Agreed Profit Share % *</label>
+                  <CustomNumberInput
+                    value={newDirShare}
+                    onChange={setNewDirShare}
+                    placeholder="e.g. 50 or 25"
+                    min={0}
+                    max={100}
+                    allowDecimal
+                    required
+                  />
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">Sum of all partners = 100%</span>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Agreed Capital Target (PKR)</label>
+                  <CustomNumberInput
+                    value={newDirExpected}
+                    onChange={setNewDirExpected}
+                    placeholder="e.g. 500,000"
+                    prefix="Rs."
+                    allowDecimal={false}
+                  />
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">One-time capital commitment</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Email (For OTP Login Clearance)</label>
+                  <CustomTextInput
+                    type="email"
+                    placeholder="partner@example.com"
+                    value={newDirEmail}
+                    onChange={setNewDirEmail}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Phone Number</label>
+                  <CustomTextInput
+                    placeholder="e.g. 03001234567"
+                    value={newDirPhone}
+                    onChange={setNewDirPhone}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">CNIC Number</label>
+                <CustomTextInput
+                  placeholder="e.g. 35102-1234567-1"
+                  value={newDirCnic}
+                  onChange={setNewDirCnic}
+                />
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">
+                  Bank Account (Optional For Dividends)
+                </span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Bank Name</label>
+                    <CustomTextInput
+                      placeholder="e.g. Meezan Bank, HBL"
+                      value={newDirBank}
+                      onChange={setNewDirBank}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Account #</label>
+                    <CustomTextInput
+                      placeholder="e.g. 0102030405"
+                      value={newDirAcc}
+                      onChange={setNewDirAcc}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddDirectorOpen(false)}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={addDirSubmitting}
+                  className="px-5 py-2 rounded-xl bg-[#0B462C] hover:bg-[#093823] text-white text-xs font-bold shadow-xs disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  {addDirSubmitting ? 'Registering...' : 'Register Partner'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ================= ✏️ MODAL: EDIT PARTNER / DIRECTOR ================= */}
+      {isEditDirectorOpen && isMounted && createPortal(
+        <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-gray-900">Edit Partner Profile</h3>
+                  <p className="text-xs text-gray-500 font-medium">Update profit share %, agreed capital target, or contact info</p>
+                </div>
+              </div>
+              <button onClick={() => { setIsEditDirectorOpen(false); setEditingDirector(null); }} className="text-gray-400 hover:text-gray-700 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editDirError && (
+              <div className="mt-3 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {editDirError}
+              </div>
+            )}
+
+            <form onSubmit={handleEditDirector} className="space-y-3.5 mt-4">
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">Partner Full Name *</label>
+                <CustomTextInput
+                  placeholder="e.g. Shahbaz Ali, Usman Ahmad"
+                  value={editDirName}
+                  onChange={setEditDirName}
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Agreed Profit Share % *</label>
+                  <CustomNumberInput
+                    value={editDirShare}
+                    onChange={setEditDirShare}
+                    placeholder="e.g. 50 or 25"
+                    min={0}
+                    max={100}
+                    allowDecimal
+                    required
+                  />
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">Total of all partners = 100%</span>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Agreed Capital Target (PKR)</label>
+                  <CustomNumberInput
+                    value={editDirExpected}
+                    onChange={setEditDirExpected}
+                    placeholder="e.g. 500,000"
+                    prefix="Rs."
+                    allowDecimal={false}
+                  />
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">One-time capital commitment</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Email Address</label>
+                  <CustomTextInput
+                    type="email"
+                    placeholder="partner@example.com"
+                    value={editDirEmail}
+                    onChange={setEditDirEmail}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Phone Number</label>
+                  <CustomTextInput
+                    placeholder="e.g. 03001234567"
+                    value={editDirPhone}
+                    onChange={setEditDirPhone}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-700 block mb-1">CNIC Number</label>
+                <CustomTextInput
+                  placeholder="e.g. 35102-1234567-1"
+                  value={editDirCnic}
+                  onChange={setEditDirCnic}
+                />
+              </div>
+
+              <div className="pt-2 border-t border-gray-100">
+                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block mb-2">
+                  Bank Account (Optional For Dividends)
+                </span>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Bank Name</label>
+                    <CustomTextInput
+                      placeholder="e.g. Meezan Bank, HBL"
+                      value={editDirBank}
+                      onChange={setEditDirBank}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Account #</label>
+                    <CustomTextInput
+                      placeholder="e.g. 0102030405"
+                      value={editDirAcc}
+                      onChange={setEditDirAcc}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setIsEditDirectorOpen(false); setEditingDirector(null); }}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editDirSubmitting}
+                  className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-xs disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Edit3 className="w-4 h-4" />
+                  {editDirSubmitting ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );

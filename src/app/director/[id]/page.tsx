@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useTransition } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -44,9 +45,14 @@ interface StatementSummary {
 }
 
 export default function DirectorStatementPage() {
+  const [isMounted, setIsMounted] = useState(false);
   const params = useParams();
   const router = useRouter();
   const directorId = params?.id as string;
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Month Filter - Defaults to Current Month (YYYY-MM)
   const [selectedMonth, setSelectedMonth] = useState<string>(() => {
@@ -91,7 +97,8 @@ export default function DirectorStatementPage() {
   const [capCategoryId, setCapCategoryId] = useState('');
   const [capAmount, setCapAmount] = useState('');
   const [capDate, setCapDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [capMethod, setCapMethod] = useState('Capital Account');
+  const [capMethod, setCapMethod] = useState('Director Personal Bank Transfer');
+  const [capRef, setCapRef] = useState('');
   const [capNotes, setCapNotes] = useState('');
   const [capReceipt, setCapReceipt] = useState<File | null>(null);
   const [capSubmitting, setCapSubmitting] = useState(false);
@@ -215,6 +222,7 @@ export default function DirectorStatementPage() {
       formData.append('amount', capAmount);
       formData.append('date', capDate);
       formData.append('payment_method', capMethod);
+      if (capRef) formData.append('reference_no', capRef);
       if (capNotes) formData.append('notes', capNotes);
       if (capReceipt) formData.append('receipt', capReceipt);
 
@@ -223,6 +231,7 @@ export default function DirectorStatementPage() {
       setCapTitle('');
       setCapCategoryId('');
       setCapAmount('');
+      setCapRef('');
       setCapNotes('');
       setCapReceipt(null);
       fetchStatementData();
@@ -284,26 +293,26 @@ export default function DirectorStatementPage() {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsDepositOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              onClick={() => setIsCapitalExpenseOpen(true)}
+              className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-black shadow-xs flex items-center gap-1.5 transition-all cursor-pointer ring-2 ring-purple-700/20"
             >
-              <ArrowDownLeft className="w-4 h-4" />
-              + Deposit Capital
+              <Building className="w-4 h-4" />
+              + Pay Director Expense (Adds Capital)
             </button>
 
             <button
-              onClick={() => setIsCapitalExpenseOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              onClick={() => setIsDepositOpen(true)}
+              className="px-3.5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <Building className="w-4 h-4" />
-              🏗️ Record Capital Usage
+              <ArrowDownLeft className="w-4 h-4" />
+              + Direct Capital Deposit
             </button>
 
             <button
               onClick={() => setIsWithdrawOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-3.5 py-2.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <ArrowUpRight className="w-4 h-4" />
               - Withdraw Funds
@@ -809,8 +818,8 @@ export default function DirectorStatementPage() {
         </div>
 
         {/* ================= ➕ MODAL: DEPOSIT CAPITAL ================= */}
-        {isDepositOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        {isDepositOpen && isMounted && createPortal(
+          <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <h3 className="text-base font-black text-gray-900">Record Capital Injection for {director?.name}</h3>
@@ -896,22 +905,25 @@ export default function DirectorStatementPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
-        {/* ================= 🏗️ MODAL: RECORD CAPITAL USAGE / EXPENSE ================= */}
-        {isCapitalExpenseOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        {/* ================= 🏗️ MODAL: RECORD DIRECTOR-PAID EXPENSE (ADDS CAPITAL) ================= */}
+        {isCapitalExpenseOpen && isMounted && createPortal(
+          <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
             <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <div>
-                  <h3 className="text-base font-black text-gray-900">Record Capital Expense / Usage</h3>
-                  <p className="text-xs text-gray-500 font-medium">Charge expense directly to {director?.name}&apos;s capital account</p>
+                  <h3 className="text-base font-black text-gray-900">Record Director-Paid Expense (Adds Capital)</h3>
+                  <p className="text-xs text-gray-500 font-medium">Paying this institutional expense directly increases {director?.name}&apos;s capital & equity</p>
                 </div>
                 <button onClick={() => setIsCapitalExpenseOpen(false)} className="text-gray-400 hover:text-gray-700 cursor-pointer">
                   <X className="w-5 h-5" />
                 </button>
               </div>
+
+
 
               {capError && (
                 <div className="mt-3 p-3 rounded-xl bg-rose-50 text-rose-700 text-xs font-bold flex items-center gap-2">
@@ -924,7 +936,7 @@ export default function DirectorStatementPage() {
                 <div>
                   <label className="text-xs font-bold text-gray-700 block mb-1">Expense Title / Description *</label>
                   <CustomTextInput
-                    placeholder="e.g. Solar Inverter & Panels, Campus Renovation, Lab Equipment"
+                    placeholder="e.g. Solar Inverter & Panels, Campus Renovation, MOU Fee"
                     value={capTitle}
                     onChange={setCapTitle}
                     required
@@ -933,14 +945,22 @@ export default function DirectorStatementPage() {
 
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className="text-xs font-bold text-gray-700 block mb-1">Category</label>
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Category (Search or Create)</label>
                     <CustomDropdown
                       options={[
-                        { value: '', label: 'Select Category', icon: '📁' },
+                        { value: '', label: 'Select or Search Category', icon: '📁' },
                         ...categories.map(c => ({ value: String(c.id), label: c.name, icon: '🏷️' }))
                       ]}
                       value={capCategoryId}
                       onChange={setCapCategoryId}
+                      searchable
+                      creatable
+                      placeholder="Select, search or type new..."
+                      onCreateOption={(newCatName) => {
+                        if (!categories.some(c => c.name.toLowerCase() === newCatName.toLowerCase())) {
+                          setCategories(prev => [...prev, { id: Date.now(), name: newCatName }]);
+                        }
+                      }}
                     />
                   </div>
                   <div>
@@ -948,7 +968,7 @@ export default function DirectorStatementPage() {
                     <CustomNumberInput
                       value={capAmount}
                       onChange={setCapAmount}
-                      placeholder="e.g. 150,000"
+                      placeholder="e.g. 500,000"
                       required
                     />
                   </div>
@@ -963,26 +983,21 @@ export default function DirectorStatementPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-bold text-gray-700 block mb-1">Payment Method *</label>
-                    <CustomDropdown
-                      options={[
-                        { value: 'Capital Account', label: 'Capital Account', icon: '🏛️' },
-                        { value: 'Bank Transfer', label: 'Bank Transfer', icon: '💳' },
-                        { value: 'Cash', label: 'Cash', icon: '💵' },
-                        { value: 'Cheque', label: 'Cheque', icon: '🧾' },
-                      ]}
-                      value={capMethod}
-                      onChange={setCapMethod}
+                    <label className="text-xs font-bold text-gray-700 block mb-1">Invoice / Reference #</label>
+                    <CustomTextInput
+                      placeholder="e.g. INV-9921, Solar Vendor Bill #401"
+                      value={capRef}
+                      onChange={setCapRef}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Notes / Vendor / Invoices</label>
+                  <label className="text-xs font-bold text-gray-700 block mb-1">Notes / Vendor Details</label>
                   <CustomTextInput
                     multiline
                     rows={2}
-                    placeholder="e.g. Vendor: Pak Solar Ltd, Invoice #INV-8821 for 10kW On-Grid Solar System"
+                    placeholder="e.g. Vendor: Pak Solar Ltd, 10kW system for main campus"
                     value={capNotes}
                     onChange={setCapNotes}
                   />
@@ -994,7 +1009,7 @@ export default function DirectorStatementPage() {
                     type="file"
                     accept="image/*,application/pdf"
                     onChange={(e) => setCapReceipt(e.target.files ? e.target.files[0] : null)}
-                    className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-800 hover:file:bg-amber-100"
+                    className="w-full text-xs text-gray-500 file:mr-3 file:py-2 file:px-3.5 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-purple-50 file:text-purple-800 hover:file:bg-purple-100"
                   />
                 </div>
 
@@ -1009,19 +1024,20 @@ export default function DirectorStatementPage() {
                   <button
                     type="submit"
                     disabled={capSubmitting}
-                    className="px-5 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shadow-xs disabled:opacity-50 cursor-pointer"
+                    className="px-5 py-2 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold shadow-xs disabled:opacity-50 cursor-pointer"
                   >
-                    {capSubmitting ? 'Recording Expense...' : 'Record Capital Expense'}
+                    {capSubmitting ? 'Recording...' : 'Record Expense & Add Capital'}
                   </button>
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         {/* ================= ➕ MODAL: WITHDRAW FUNDS ================= */}
-        {isWithdrawOpen && (
-          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+        {isWithdrawOpen && isMounted && createPortal(
+          <div className="fixed inset-0 z-[99999] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
             <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-200 animate-in fade-in zoom-in duration-150">
               <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                 <h3 className="text-base font-black text-gray-900">Record Withdrawal for {director?.name}</h3>
@@ -1112,7 +1128,8 @@ export default function DirectorStatementPage() {
                 </div>
               </form>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
       </div>

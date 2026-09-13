@@ -6,6 +6,7 @@ import SuperAdminDashboard from '@/components/SuperAdminDashboard';
 import AccountantDashboard from '@/components/AccountantDashboard';
 import PrincipalDashboard from '@/components/PrincipalDashboard';
 import TeacherDashboard from '@/components/TeacherDashboard';
+import HRDashboard from '@/components/HRDashboard';
 import DirectorPortalPage from '@/app/director/page';
 import { RefreshCw } from 'lucide-react';
 
@@ -28,7 +29,12 @@ export default function DashboardPage() {
     );
   }
 
-  // Principal View: Campus Command Center & Order Requisitions
+  // HR View: Staff Attendance Roll-Call & Personnel Desk
+  if (user?.role === 'hr') {
+    return <HRDashboard currentUser={user} />;
+  }
+
+  // Principal View: Campus Command Center & Faculty Registry
   if (user?.role === 'principal') {
     return <PrincipalDashboard currentUser={user} />;
   }

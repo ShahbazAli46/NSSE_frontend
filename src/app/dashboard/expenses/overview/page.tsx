@@ -54,6 +54,7 @@ export default function ExpensesOverviewPage() {
   const router = useRouter();
   const [data, setData] = useState<OverviewData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [expenseType, setExpenseType] = useState<'all' | 'general' | 'director'>('all');
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthString());
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -64,6 +65,7 @@ export default function ExpensesOverviewPage() {
     try {
       let url = '/expenses/overview?';
       if (selectedMonth) url += `month=${selectedMonth}&`;
+      if (expenseType !== 'all') url += `expense_type=${expenseType}&`;
       const res = await api.get<OverviewData>(url);
       setData(res);
     } catch (err) {
@@ -75,7 +77,7 @@ export default function ExpensesOverviewPage() {
 
   useEffect(() => {
     fetchOverview();
-  }, [selectedMonth, lastEventTimestamp]);
+  }, [selectedMonth, expenseType, lastEventTimestamp]);
 
   const filteredCategories = data?.categories.filter((cat) => {
     if (!searchQuery) return true;
@@ -113,23 +115,57 @@ export default function ExpensesOverviewPage() {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white p-3.5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <label className="text-xs font-bold text-gray-600 shrink-0">
-            Month:
-          </label>
-          <div className="w-auto shrink-0">
-            <CustomMonthPicker
-              value={selectedMonth}
-              onChange={(m) => setSelectedMonth(m)}
-              placeholder="All Months"
-              allowClear={true}
-            />
+      <div className="bg-white p-3.5 rounded-2xl border border-gray-200/80 shadow-xs flex flex-col lg:flex-row items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          {/* Month Selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold text-gray-600 shrink-0">
+              Month:
+            </label>
+            <div className="w-auto shrink-0">
+              <CustomMonthPicker
+                value={selectedMonth}
+                onChange={(m) => setSelectedMonth(m)}
+                placeholder="All Months"
+                allowClear={true}
+              />
+            </div>
+          </div>
+
+          {/* Expense Type Switcher */}
+          <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 text-xs font-bold shrink-0">
+            <button
+              type="button"
+              onClick={() => setExpenseType('all')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                expenseType === 'all' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              All Types
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpenseType('general')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                expenseType === 'general' ? 'bg-white text-[#0B462C] shadow-xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              🏫 General
+            </button>
+            <button
+              type="button"
+              onClick={() => setExpenseType('director')}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
+                expenseType === 'director' ? 'bg-white text-purple-900 shadow-xs' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              💎 Director Capital
+            </button>
           </div>
         </div>
 
         {/* Category Search */}
-        <div className="relative flex-1 w-full sm:max-w-md">
+        <div className="relative flex-1 w-full lg:max-w-md">
           <Search className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
           <input
             type="text"
@@ -253,7 +289,7 @@ export default function ExpensesOverviewPage() {
                 </tr>
               ) : (
                 filteredCategories.map((cat, idx) => {
-                  const targetUrl = `/dashboard/expenses?category=${encodeURIComponent(cat.name)}${selectedMonth ? `&month=${selectedMonth}` : ''}`;
+                  const targetUrl = `/dashboard/expenses?category=${encodeURIComponent(cat.name)}${selectedMonth ? `&month=${selectedMonth}` : ''}${expenseType !== 'all' ? `&expense_type=${expenseType}` : ''}`;
                   return (
                     <tr
                       key={cat.name}

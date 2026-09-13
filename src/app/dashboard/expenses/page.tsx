@@ -37,6 +37,12 @@ const TIER_OPTIONS: DropdownOption[] = [
   { value: '4', label: '🔴 Tier 4: High Value (> 50k)', icon: '🔴' },
 ];
 
+const EXPENSE_TYPE_OPTIONS: DropdownOption[] = [
+  { value: 'all', label: 'All Expenses (OPEX & CAPEX)', icon: '🏛️' },
+  { value: 'general', label: '🏫 School Operational (General)', icon: '🏫' },
+  { value: 'director', label: '💎 Director Capital Injections', icon: '💎' },
+];
+
 const getCurrentMonthString = () => {
   const now = new Date();
   const year = now.getFullYear();
@@ -68,6 +74,7 @@ function ExpensesContent() {
   const [selectedMonth, setSelectedMonth] = useState<string>(() => searchParams.get('month') || getCurrentMonthString());
   const [categoryFilter, setCategoryFilter] = useState<string>(() => searchParams.get('category') || '');
   const [tierFilter, setTierFilter] = useState<string>(() => searchParams.get('tier') || '');
+  const [expenseTypeFilter, setExpenseTypeFilter] = useState<string>(() => searchParams.get('expense_type') || 'all');
   const [searchQuery, setSearchQuery] = useState<string>(() => searchParams.get('search') || '');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>(() => searchParams.get('search') || '');
   const [availableCategories, setAvailableCategories] = useState<{ id: number; name: string }[]>([]);
@@ -77,11 +84,13 @@ function ExpensesContent() {
     const monthParam = searchParams.get('month');
     const categoryParam = searchParams.get('category');
     const tierParam = searchParams.get('tier');
+    const expenseTypeParam = searchParams.get('expense_type');
     const searchParam = searchParams.get('search');
 
     if (monthParam !== null) setSelectedMonth(monthParam);
     if (categoryParam !== null) setCategoryFilter(categoryParam);
     if (tierParam !== null) setTierFilter(tierParam);
+    if (expenseTypeParam !== null) setExpenseTypeFilter(expenseTypeParam);
     if (searchParam !== null) {
       setSearchQuery(searchParam);
       setDebouncedSearchQuery(searchParam);
@@ -120,6 +129,7 @@ function ExpensesContent() {
       if (selectedMonth) url += `month=${selectedMonth}&`;
       if (categoryFilter) url += `category=${encodeURIComponent(categoryFilter)}&`;
       if (tierFilter) url += `tier=${tierFilter}&`;
+      if (expenseTypeFilter) url += `expense_type=${encodeURIComponent(expenseTypeFilter)}&`;
       if (debouncedSearchQuery) url += `search=${encodeURIComponent(debouncedSearchQuery)}&`;
 
       const res: any = await api.get(url);
@@ -139,7 +149,7 @@ function ExpensesContent() {
 
   useEffect(() => {
     fetchExpenses();
-  }, [selectedMonth, categoryFilter, tierFilter, debouncedSearchQuery]);
+  }, [selectedMonth, categoryFilter, tierFilter, expenseTypeFilter, debouncedSearchQuery]);
 
   const handleExportPdf = async () => {
     setIsExportingPdf(true);
@@ -148,6 +158,7 @@ function ExpensesContent() {
       if (selectedMonth) params.append('month', selectedMonth);
       if (categoryFilter) params.append('category', categoryFilter);
       if (tierFilter) params.append('tier', tierFilter);
+      if (expenseTypeFilter) params.append('expense_type', expenseTypeFilter);
       if (searchQuery) params.append('search', searchQuery);
 
       await downloadBlob(`/expenses/export-pdf?${params.toString()}`, `Expenses_Audit_${selectedMonth || 'ledger'}.pdf`);
@@ -246,6 +257,16 @@ function ExpensesContent() {
             value={categoryFilter}
             onChange={setCategoryFilter}
             placeholder="Category"
+          />
+        </div>
+
+        {/* Expense Type Filter (School OPEX vs Director CAPEX) */}
+        <div className="w-56">
+          <CustomDropdown
+            options={EXPENSE_TYPE_OPTIONS}
+            value={expenseTypeFilter}
+            onChange={setExpenseTypeFilter}
+            placeholder="All Types"
           />
         </div>
       </div>
@@ -361,7 +382,14 @@ function ExpensesContent() {
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-gray-900 text-sm">{item.title}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 text-sm">{item.title}</span>
+                          {item.expense_type === 'director' && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-purple-100 text-purple-800 border border-purple-200">
+                              👑 {item.director?.name ? `${item.director.name} Paid` : 'Director Paid'}
+                            </span>
+                          )}
+                        </div>
                         <div className="text-[11px] text-gray-500 flex items-center gap-2 mt-0.5">
                           <span className="text-[#0B462C] font-semibold">{item.category}</span>
                           {item.description && <span className="truncate max-w-xs text-gray-500">• {item.description}</span>}

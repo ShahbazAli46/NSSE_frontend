@@ -26,7 +26,7 @@ export default function CustomNumberInput({
   prefix,
   min,
   max,
-  allowDecimal = false,
+  allowDecimal = true,
   disabled = false,
   required = false,
   name,
@@ -108,8 +108,7 @@ export default function CustomNumberInput({
       )}
       <input
         type="text"
-        inputMode={allowDecimal ? 'decimal' : 'numeric'}
-        pattern={allowDecimal ? '[0-9]*[.]?[0-9]*' : '[0-9]*'}
+        inputMode="decimal"
         id={id}
         name={name}
         required={required}

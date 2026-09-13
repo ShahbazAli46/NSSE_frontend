@@ -137,6 +137,14 @@ export default function AccountantDashboard({ currentUser }: { currentUser: User
   const [chequeSearch, setChequeSearch] = useState<string>('');
   const [debouncedChequeSearch, setDebouncedChequeSearch] = useState<string>('');
 
+  const sortedCheques = useMemo(() => {
+    return [...cheques].sort((a, b) => {
+      const dateA = new Date(a.issue_date || a.created_at).getTime();
+      const dateB = new Date(b.issue_date || b.created_at).getTime();
+      return dateA - dateB;
+    });
+  }, [cheques]);
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedChequeSearch(chequeSearch.trim());
@@ -150,6 +158,14 @@ export default function AccountantDashboard({ currentUser }: { currentUser: User
   const [grantSearch, setGrantSearch] = useState<string>('');
   const [debouncedGrantSearch, setDebouncedGrantSearch] = useState<string>('');
 
+  const sortedGrants = useMemo(() => {
+    return [...grants].sort((a, b) => {
+      const dateA = new Date(a.deposit_date || a.created_at).getTime();
+      const dateB = new Date(b.deposit_date || b.created_at).getTime();
+      return dateA - dateB;
+    });
+  }, [grants]);
+
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedGrantSearch(grantSearch.trim());
@@ -161,10 +177,30 @@ export default function AccountantDashboard({ currentUser }: { currentUser: User
   const [statement, setStatement] = useState<BankStatementItem[]>([]);
   const [isLoadingPassbook, setIsLoadingPassbook] = useState<boolean>(false);
 
+  const sortedPassbook = useMemo(() => {
+    return [...statement].sort((a, b) => {
+      if (a.id === 'opening_balance_bank') return -1;
+      if (b.id === 'opening_balance_bank') return 1;
+      const timeA = a.raw_date ? new Date(a.raw_date).getTime() : new Date(a.date).getTime();
+      const timeB = b.raw_date ? new Date(b.raw_date).getTime() : new Date(b.date).getTime();
+      return timeA - timeB;
+    });
+  }, [statement]);
+
   // Cash Drawer State
   const [cashDrawerStatement, setCashDrawerStatement] = useState<CashDrawerStatementItem[]>([]);
   const [isLoadingCashDrawer, setIsLoadingCashDrawer] = useState<boolean>(false);
   const [cashDrawerSearch, setCashDrawerSearch] = useState<string>('');
+
+  const sortedCashDrawer = useMemo(() => {
+    return [...cashDrawerStatement].sort((a, b) => {
+      if (a.id === 'opening_balance_drawer') return -1;
+      if (b.id === 'opening_balance_drawer') return 1;
+      const timeA = a.raw_date ? new Date(a.raw_date).getTime() : new Date(a.date).getTime();
+      const timeB = b.raw_date ? new Date(b.raw_date).getTime() : new Date(b.date).getTime();
+      return timeA - timeB;
+    });
+  }, [cashDrawerStatement]);
 
   // Modals State
   const [isExpenseModalOpen, setIsExpenseModalOpen] = useState(false);
@@ -1151,7 +1187,7 @@ export default function AccountantDashboard({ currentUser }: { currentUser: User
                       </td>
                     </tr>
                   ) : (
-                    cheques.map((item) => {
+                    sortedCheques.map((item) => {
                       const tier = getTierInfo(Number(item.amount));
                       return (
                         <tr key={item.id} className="hover:bg-sky-50/30 transition-colors bg-white">
@@ -1292,7 +1328,7 @@ export default function AccountantDashboard({ currentUser }: { currentUser: User
                       </td>
                     </tr>
                   ) : (
-                    grants.map((item) => (
+                    sortedGrants.map((item) => (
                       <tr key={item.id} className="hover:bg-purple-50/30 transition-colors bg-white">
                         <td className="py-3.5 px-4 font-bold text-gray-900 text-sm">
                           {item.title}
@@ -1400,7 +1436,7 @@ export default function AccountantDashboard({ currentUser }: { currentUser: User
                       </td>
                     </tr>
                   ) : (
-                    statement.map((item, idx) => (
+                    sortedPassbook.map((item, idx) => (
                       <tr key={idx} className="hover:bg-gray-50 transition-colors bg-white">
                         <td className="py-3.5 px-4 whitespace-nowrap font-bold text-gray-700">
                           {formatDisplayDate(item.date)}
@@ -1548,7 +1584,7 @@ export default function AccountantDashboard({ currentUser }: { currentUser: User
                       </td>
                     </tr>
                   ) : (
-                    cashDrawerStatement.map((item, idx) => (
+                    sortedCashDrawer.map((item, idx) => (
                       <tr key={idx} className="hover:bg-gray-50 transition-colors bg-white">
                         <td className="py-3.5 px-3.5 text-center font-mono font-bold text-gray-400 whitespace-nowrap">
                           {idx + 1}

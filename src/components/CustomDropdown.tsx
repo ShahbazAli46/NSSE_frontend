@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check } from 'lucide-react';
+import { ChevronDown, Check, Search, Plus, X } from 'lucide-react';
 
 export interface DropdownOption {
   value: string;
@@ -19,6 +19,10 @@ interface CustomDropdownProps {
   buttonClassName?: string;
   disabled?: boolean;
   placement?: 'auto' | 'top' | 'bottom';
+  searchable?: boolean;
+  creatable?: boolean;
+  searchPlaceholder?: string;
+  onCreateOption?: (newLabel: string) => void;
 }
 
 export default function CustomDropdown({
@@ -30,12 +34,42 @@ export default function CustomDropdown({
   buttonClassName = '',
   disabled = false,
   placement = 'auto',
+  searchable = false,
+  creatable = false,
+  searchPlaceholder = 'Search...',
+  onCreateOption,
 }: CustomDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [openUpward, setOpenUpward] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const selectedOption = options.find((opt) => opt.value === value);
+  const selectedOption = options.find((opt) => opt.value === value || opt.label.toLowerCase() === value?.toLowerCase());
+
+  // Filter options based on search query
+  const filteredOptions = (searchable || creatable) && searchTerm.trim()
+    ? options.filter((opt) =>
+        opt.label.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
+        (opt.description && opt.description.toLowerCase().includes(searchTerm.toLowerCase().trim()))
+      )
+    : options;
+
+  // Check if search query exact matches an existing option
+  const exactMatch = options.some(
+    (opt) => opt.label.toLowerCase() === searchTerm.trim().toLowerCase() || opt.value.toLowerCase() === searchTerm.trim().toLowerCase()
+  );
+
+  // Focus search input on open
+  useEffect(() => {
+    if (isOpen && (searchable || creatable)) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 50);
+    } else {
+      setSearchTerm('');
+    }
+  }, [isOpen, searchable, creatable]);
 
   // Smart upward/downward positioning
   useEffect(() => {
@@ -48,8 +82,7 @@ export default function CustomDropdown({
         const rect = dropdownRef.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
         const spaceAbove = rect.top;
-        // If less than 260px available below and more space above, flip upward
-        if (spaceBelow < 260 && spaceAbove > spaceBelow) {
+        if (spaceBelow < 280 && spaceAbove > spaceBelow) {
           setOpenUpward(true);
         } else {
           setOpenUpward(false);
@@ -83,6 +116,18 @@ export default function CustomDropdown({
   const handleSelect = (optionValue: string) => {
     onChange(optionValue);
     setIsOpen(false);
+    setSearchTerm('');
+  };
+
+  const handleCreateNew = () => {
+    const trimmed = searchTerm.trim();
+    if (!trimmed) return;
+    onChange(trimmed);
+    if (onCreateOption) {
+      onCreateOption(trimmed);
+    }
+    setIsOpen(false);
+    setSearchTerm('');
   };
 
   return (
@@ -126,41 +171,104 @@ export default function CustomDropdown({
       {/* Options Menu */}
       {isOpen && (
         <div
-          className={`absolute z-50 left-0 right-0 bg-white border border-gray-100 rounded-2xl shadow-2xl py-2 max-h-56 overflow-y-auto animate-fadeIn ${
+          className={`absolute z-50 left-0 right-0 bg-white border border-gray-200 rounded-2xl shadow-2xl py-2 max-h-64 overflow-y-auto animate-fadeIn ${
             openUpward ? 'bottom-full mb-2' : 'top-full mt-2'
           }`}
         >
-          {options.map((option) => {
-            const isSelected = option.value === value;
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => handleSelect(option.value)}
-                className={`w-full px-4 py-2.5 text-left text-sm flex items-center justify-between transition-colors cursor-pointer ${
-                  isSelected
-                    ? 'bg-[#0B462C]/5 text-[#0B462C] font-semibold'
-                    : 'text-gray-700 hover:bg-gray-50 font-medium'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  {option.icon && <span className="text-lg shrink-0">{option.icon}</span>}
-                  <div>
-                    <div className={isSelected ? 'text-[#0B462C]' : 'text-gray-900'}>
-                      {option.label}
-                    </div>
-                    {option.description && (
-                      <div className="text-xs text-gray-400 font-normal mt-0.5">
-                        {option.description}
-                      </div>
-                    )}
-                  </div>
-                </div>
+          {/* Search / Create Input Box */}
+          {(searchable || creatable) && (
+            <div className="px-3 pb-2 mb-1 border-b border-gray-100">
+              <div className="relative flex items-center">
+                <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      if (filteredOptions.length > 0 && filteredOptions[0].value) {
+                        handleSelect(filteredOptions[0].value);
+                      } else if (creatable && searchTerm.trim() && !exactMatch) {
+                        handleCreateNew();
+                      }
+                    }
+                  }}
+                  placeholder={creatable ? 'Type to search or create new...' : searchPlaceholder}
+                  className="w-full pl-8 pr-7 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-medium text-gray-800 placeholder-gray-400 focus:outline-none focus:bg-white focus:border-[#0B462C] transition-all"
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    className="absolute right-2 text-gray-400 hover:text-gray-600 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
-                {isSelected && <Check className="w-4 h-4 text-[#0B462C] shrink-0" />}
+          {/* Creatable Quick Add Action */}
+          {creatable && searchTerm.trim() && !exactMatch && (
+            <div className="px-2 pb-1.5 pt-0.5">
+              <button
+                type="button"
+                onClick={handleCreateNew}
+                className="w-full px-3 py-2 text-left text-xs font-bold rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <div className="w-5 h-5 rounded-lg bg-purple-600 text-white flex items-center justify-center shrink-0">
+                  <Plus className="w-3.5 h-3.5" />
+                </div>
+                <div className="truncate">
+                  Create <span className="underline font-black">"{searchTerm.trim()}"</span>
+                </div>
               </button>
-            );
-          })}
+            </div>
+          )}
+
+          {/* Filtered Option Items */}
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => {
+              const isSelected = option.value === value || (!option.value && !value);
+              return (
+                <button
+                  key={option.value || 'empty'}
+                  type="button"
+                  onClick={() => handleSelect(option.value)}
+                  className={`w-full px-4 py-2 text-left text-sm flex items-center justify-between transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#0B462C]/5 text-[#0B462C] font-semibold'
+                      : 'text-gray-700 hover:bg-gray-50 font-medium'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 truncate">
+                    {option.icon && <span className="text-base shrink-0">{option.icon}</span>}
+                    <div className="truncate">
+                      <div className={`truncate ${isSelected ? 'text-[#0B462C]' : 'text-gray-900'}`}>
+                        {option.label}
+                      </div>
+                      {option.description && (
+                        <div className="text-[11px] text-gray-400 font-normal mt-0.5 truncate">
+                          {option.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {isSelected && <Check className="w-4 h-4 text-[#0B462C] shrink-0" />}
+                </button>
+              );
+            })
+          ) : (
+            !creatable && (
+              <div className="px-4 py-3 text-center text-xs text-gray-400 font-medium">
+                No matching options found
+              </div>
+            )
+          )}
         </div>
       )}
     </div>

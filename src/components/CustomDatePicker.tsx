@@ -193,13 +193,13 @@ export default function CustomDatePicker({
   }
 
   return (
-    <div className={`relative inline-block ${className}`} ref={containerRef}>
+    <div className={`relative ${className}`} ref={containerRef}>
       {/* Trigger Button */}
       <button
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`px-4 py-2.5 bg-gray-50 border rounded-xl text-sm font-medium flex items-center justify-between gap-2.5 transition-all outline-none cursor-pointer ${
+        className={`w-full px-3.5 py-2 sm:py-2.5 bg-gray-50 border rounded-xl text-xs sm:text-sm font-medium flex items-center justify-between gap-2 transition-all outline-none cursor-pointer ${
           isOpen
             ? 'bg-white border-[#0B462C] ring-2 ring-[#0B462C]/10 shadow-xs'
             : 'border-gray-200 hover:border-gray-300 text-gray-800'
