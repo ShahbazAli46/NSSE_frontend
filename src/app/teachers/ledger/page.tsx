@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -41,7 +41,7 @@ import {
   Receipt
 } from 'lucide-react';
 
-export default function TeacherLedgerPage() {
+function TeacherLedgerPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const teacherId = searchParams.get('id');
@@ -557,5 +557,13 @@ export default function TeacherLedgerPage() {
 
       </main>
     </div>
+  );
+}
+
+export default function TeacherLedgerPage() {
+  return (
+    <Suspense fallback={null}>
+      <TeacherLedgerPageInner />
+    </Suspense>
   );
 }

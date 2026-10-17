@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Printer, X, RefreshCw, CheckCircle2 } from 'lucide-react';
@@ -25,7 +25,7 @@ function numberToWords(num: number): string {
   return inWords(intPart) + ' Rupees Only';
 }
 
-export default function PayslipPrintPage() {
+function PayslipPrintPageInner() {
   const searchParams = useSearchParams();
   const idParam = searchParams.get('id');
   const monthParam = searchParams.get('month') || '2026-08';
@@ -406,5 +406,13 @@ export default function PayslipPrintPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function PayslipPrintPage() {
+  return (
+    <Suspense fallback={null}>
+      <PayslipPrintPageInner />
+    </Suspense>
   );
 }

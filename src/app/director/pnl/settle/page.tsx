@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { api, PnlDirector, PnlSummary } from '@/lib/api';
@@ -109,7 +109,7 @@ const STREAM_PALETTES = [
   }
 ];
 
-export default function ProfitDisbursementVisualPage() {
+function ProfitDisbursementVisualPageInner() {
   const searchParams = useSearchParams();
   const initialMonth = searchParams.get('month') || getCurrentMonthString();
 
@@ -741,5 +741,13 @@ export default function ProfitDisbursementVisualPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ProfitDisbursementVisualPage() {
+  return (
+    <Suspense fallback={null}>
+      <ProfitDisbursementVisualPageInner />
+    </Suspense>
   );
 }

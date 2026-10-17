@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, Suspense } from 'react';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { Printer, X, RefreshCw, Calendar } from 'lucide-react';
 import { api, AttendanceRosterItem } from '@/lib/api';
 
-export default function AttendancePrintPage() {
+function AttendancePrintPageInner() {
   const searchParams = useSearchParams();
   const startDateParam = searchParams.get('startDate') || searchParams.get('date') || new Date().toISOString().split('T')[0];
   const endDateParam = searchParams.get('endDate') || startDateParam;
@@ -253,5 +253,13 @@ export default function AttendancePrintPage() {
         }
       `}</style>
     </div>
+  );
+}
+
+export default function AttendancePrintPage() {
+  return (
+    <Suspense fallback={null}>
+      <AttendancePrintPageInner />
+    </Suspense>
   );
 }
