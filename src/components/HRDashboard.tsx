@@ -1130,7 +1130,7 @@ export default function HRDashboard({ currentUser }: HRDashboardProps) {
                             <h4 className="text-sm font-black text-gray-900 truncate">
                               {item.name}
                             </h4>
-                            {item.staff_type === 'staff' && (item.name.toLowerCase().includes('principal') || (item.designation && item.designation.toLowerCase().includes('principal'))) && !['director', 'super_admin', 'admin', 'chairman'].includes(currentUser?.role || '') ? (
+                            {item.staff_type === 'non_teaching' && (item.name.toLowerCase().includes('principal') || (item.designation && item.designation.toLowerCase().includes('principal'))) && !['director', 'super_admin', 'admin', 'chairman'].includes(currentUser?.role || '') ? (
                               <span 
                                 className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-amber-50 text-amber-900 border border-amber-200"
                                 title="Principal profile is editable by Director only"

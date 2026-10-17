@@ -7,7 +7,7 @@ interface CustomTextInputProps {
   onChange: (value: string) => void;
   placeholder?: string;
   className?: string;
-  type?: 'text' | 'email' | 'tel' | 'password' | 'url';
+  type?: 'text' | 'email' | 'tel' | 'password' | 'url' | 'number';
   disabled?: boolean;
   required?: boolean;
   name?: string;

@@ -714,7 +714,7 @@ export default function PrincipalDashboard({ currentUser }: PrincipalDashboardPr
                           <div className="relative inline-flex items-center shrink-0">
                             <select
                               value={teacher.status}
-                              onChange={(e) => handleStatusChange(teacher.id, e.target.value as any)}
+                              onChange={(e) => handleUpdateTeacherStatus(teacher, e.target.value as any)}
                               disabled={togglingId === teacher.id}
                               className={`text-[11px] font-black uppercase tracking-wider py-1 pl-2.5 pr-6 rounded-xl border outline-hidden transition cursor-pointer appearance-none ${
                                 teacher.status === 'active'

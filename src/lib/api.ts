@@ -319,6 +319,8 @@ export interface AttendanceRosterItem {
   account_number?: string | null;
   staff_status: 'active' | 'on_leave' | 'inactive';
   attendance?: AttendanceRecord | null;
+  is_leave_locked?: boolean;
+  leave_info?: { leave_type?: string } | null;
 }
 
 export interface AttendanceStats {
@@ -334,6 +336,15 @@ export interface AttendanceStats {
 export interface PayrollAdjustment {
   title: string;
   amount: number;
+  approved_by?: string | null;
+}
+
+export interface TeacherLedgerData {
+  status?: string;
+  staff?: Teacher | StaffMember;
+  staff_type?: 'teacher' | 'non_teaching';
+  payrolls: PayrollItem[];
+  advance_requests: AdvanceSalaryRequest[];
 }
 
 export interface PayrollItem {
@@ -404,6 +415,8 @@ export interface AdvanceSalaryRequest {
   disbursement_status: string;
   total_recovered: number;
   remaining_balance: number;
+  payment_source?: 'bank' | 'cash';
+  disbursed_by_name?: string | null;
   created_at: string;
   updated_at?: string;
 }
@@ -520,6 +533,7 @@ export interface BankStatementItem {
   date: string;
   credit: number;
   debit: number;
+  raw_date?: string;
   running_balance: number;
   slip_url?: string;
   notes?: string;
@@ -537,6 +551,7 @@ export interface CashDrawerStatementItem {
   date: string;
   inflow: number;
   outflow: number;
+  raw_date?: string;
   running_balance: number;
   slip_url?: string;
   notes?: string;

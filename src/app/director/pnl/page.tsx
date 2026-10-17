@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api, getStoredUser, User, PnlDirector, PnlSummary } from '@/lib/api';
+import { api, getStoredUser, User, PnlDirector, PnlSummary, SettlementTransfer } from '@/lib/api';
 import CustomMonthPicker from '@/components/CustomMonthPicker';
 import { 
   Building2, 
