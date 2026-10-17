@@ -72,8 +72,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (!user) return;
     fetchNotificationBadges();
-    const interval = setInterval(fetchNotificationBadges, 15000);
-    return () => clearInterval(interval);
+    const interval = setInterval(() => {
+      // Only poll while the tab is actually in use
+      if (document.visibilityState === 'visible') {
+        fetchNotificationBadges();
+      }
+    }, 60000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotificationBadges();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [user]);
 
   const handleLogout = async () => {
@@ -135,6 +149,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           href: '/dashboard', 
           icon: UserCheck,
           roles: ['hr']
+        },
+        { 
+          label: 'Students Directory', 
+          href: '/dashboard/students', 
+          icon: GraduationCap,
+          roles: ['hr', 'principal', 'office_admin', 'super_admin', 'admin']
+        },
+        { 
+          label: 'Student Attendance', 
+          href: '/dashboard/students/attendance', 
+          icon: UserCheck,
+          roles: ['hr', 'principal', 'office_admin', 'super_admin', 'admin']
         },
       ]
     },
@@ -335,6 +361,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         <Link
                           key={item.href + item.label}
                           href={item.href}
+                          prefetch={false} 
                           onClick={() => {
                             if (typeof window !== 'undefined' && window.innerWidth < 1024) {
                               setIsMobileMenuOpen(false);

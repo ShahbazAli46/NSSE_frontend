@@ -33,6 +33,7 @@ const ROLE_OPTIONS: DropdownOption[] = [
   { value: 'director', label: 'Director (Executive Approvals)', icon: '👔' },
   { value: 'principal', label: 'Principal (School Operations)', icon: '🏫' },
   { value: 'office_admin', label: 'Office Admin (Admissions & VMS)', icon: '🏢' },
+  { value: 'hr', label: 'HR Officer (Human Resources & Staff)', icon: '👥' },
   { value: 'accountant', label: 'Accountant (Accounts Officer)', icon: '📑' },
   { value: 'hr_accountant', label: 'HR & Accountant (Financial Desk)', icon: '📑' },
   { value: 'teacher', label: 'Faculty / Teacher', icon: '📚' },
@@ -271,6 +272,8 @@ export default function SuperAdminDashboard({ currentUser }: { currentUser: User
         return <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-100 text-emerald-800 border border-emerald-200">🏫 Principal</span>;
       case 'office_admin':
         return <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-cyan-100 text-cyan-800 border border-cyan-200">🏢 Office Admin</span>;
+      case 'hr':
+        return <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-emerald-100 text-emerald-900 border border-emerald-300">👥 HR Officer</span>;
       case 'accountant':
       case 'hr_accountant':
         return <span className="px-2.5 py-1 text-xs font-bold rounded-lg bg-amber-100 text-amber-900 border border-amber-300">📑 HR & Accounts</span>;

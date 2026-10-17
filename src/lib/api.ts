@@ -7,6 +7,220 @@ export interface User {
   role: 'admin' | 'director' | 'chairman' | 'accountant' | 'principal' | 'super_admin' | 'hr_accountant' | 'teacher' | string;
   is_active?: boolean;
 }
+export interface Student {
+  id: number;
+  registration_no: string;
+  student_name: string;
+  father_name?: string | null;
+  b_form_no?: string | null;
+  class: string;
+  session: string;
+  section: string;
+  gender?: string | null;
+  admission_date?: string | null;
+  mobile_no?: string | null;
+  photo_path?: string | null;
+  photo_url?: string | null;
+  status: string;
+  notes?: string | null;
+  created_at?: string;
+  updated_at?: string;
+  creator?: {
+    id: number;
+    name: string;
+    role: string;
+  };
+}
+
+export interface StudentStats {
+  total_students: number;
+  with_photos: number;
+  gender_breakdown: Record<string, number>;
+  class_breakdown: Record<string, number>;
+}
+
+export interface SchoolSection {
+  id: number;
+  name: string;
+  class: string;
+  session: string;
+  capacity?: number;
+  count: number;
+  created_at?: string;
+}
+
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
+
+export interface StudentAttendanceRosterItem {
+  id: number;
+  registration_no: string;
+  student_name: string;
+  father_name?: string | null;
+  b_form_no?: string | null;
+  class: string;
+  section: string;
+  gender?: string | null;
+  mobile_no?: string | null;
+  photo_url?: string | null;
+  attendance_status: AttendanceStatus;
+  remarks?: string | null;
+}
+
+export interface AttendanceClassProgress {
+  section: string;
+  total: number;
+  is_marked: boolean;
+  present: number;
+  absent: number;
+  teacher_name?: string | null;
+  marked_at?: string | null;
+}
+
+export interface AttendanceClassSheet {
+  date: string;
+  session: string;
+  class: string;
+  section: string;
+  is_marked: boolean;
+  teacher_name?: string | null;
+  marked_at?: string | null;
+  total_students: number;
+  present_count: number;
+  absent_count: number;
+  late_count: number;
+  leave_count: number;
+  roster: StudentAttendanceRosterItem[];
+  class_progress: AttendanceClassProgress[];
+}
+
+export interface AbsenteeStudent {
+  id: number;
+  student_id: number;
+  student_name: string;
+  father_name?: string | null;
+  registration_no: string;
+  mobile_no?: string | null;
+  photo_url?: string | null;
+  class: string;
+  section: string;
+  teacher_name?: string | null;
+  remarks?: string | null;
+  follow_up_status?: 'pending' | 'contacted' | 'unreachable' | 'not_required';
+  follow_up_reason?: string | null;
+  follow_up_notes?: string | null;
+  followed_up_by?: number | null;
+  followed_up_by_name?: string | null;
+  followed_up_at?: string | null;
+  whatsapp_status?: 'pending' | 'queued' | 'sent' | 'failed' | 'skipped';
+  whatsapp_msg_id?: string | null;
+  whatsapp_sent_at?: string | null;
+  whatsapp_error?: string | null;
+}
+
+export interface FollowUpSummary {
+  total_absent: number;
+  contacted: number;
+  pending: number;
+  unreachable: number;
+}
+
+export interface WhatsAppBroadcastSummary {
+  total_absent: number;
+  sent: number;
+  queued: number;
+  failed: number;
+  skipped: number;
+  pending: number;
+}
+
+export interface DailyAttendanceSummary {
+  date: string;
+  session: string;
+  total_enrolled: number;
+  total_marked: number;
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
+  attendance_rate: number;
+  classes_summary: {
+    class: string;
+    section: string;
+    teacher_name?: string | null;
+    last_marked_at?: string | null;
+    present: number | string;
+    absent: number | string;
+    total: number;
+  }[];
+  follow_up_summary?: FollowUpSummary;
+  whatsapp_summary?: WhatsAppBroadcastSummary;
+  absentees: AbsenteeStudent[];
+}
+
+export interface MonthlyAttendanceDay {
+  day: number;
+  date: string;
+  day_name: string;
+  is_sunday: boolean;
+  is_weekend: boolean;
+  is_future: boolean;
+  is_today: boolean;
+}
+
+export interface MonthlyAttendanceDayStatus {
+  status: 'present' | 'absent' | 'late' | 'leave' | 'sunday' | 'future' | 'unmarked';
+  code: 'P' | 'A' | 'L' | 'Lv' | 'Sun' | '—' | '-';
+  remarks?: string | null;
+}
+
+export interface MonthlyAttendanceStudent {
+  id: number;
+  registration_no: string;
+  student_name: string;
+  father_name?: string | null;
+  b_form_no?: string | null;
+  class: string;
+  section: string;
+  gender?: string | null;
+  mobile_no?: string | null;
+  photo_url?: string | null;
+  days: Record<string, MonthlyAttendanceDayStatus>;
+  present_count: number;
+  absent_count: number;
+  late_count: number;
+  leave_count: number;
+  marked_days: number;
+  attendance_percentage: number;
+}
+
+export interface MonthlyAttendanceRegister {
+  session: string;
+  class: string;
+  section: string;
+  month: string;
+  month_name: string;
+  days_in_month: number;
+  days: MonthlyAttendanceDay[];
+  working_days: number;
+  summary: {
+    total_students: number;
+    avg_attendance_rate: number;
+    total_present_instances: number;
+    total_absent_instances: number;
+    total_late_instances: number;
+    total_leave_instances: number;
+  };
+  daily_totals: Record<string, {
+    present: number;
+    absent: number;
+    late: number;
+    leave: number;
+    unmarked: number;
+    total: number;
+  }>;
+  students: MonthlyAttendanceStudent[];
+}
+
 export interface TeacherAllowance {
   title: string;
   amount: number;
