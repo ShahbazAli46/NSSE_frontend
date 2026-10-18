@@ -233,6 +233,12 @@ export default function DirectorEquityDashboard() {
   const handleAddDirector = async (e: React.FormEvent) => {
     e.preventDefault();
     setAddDirError('');
+    const availableShare = Math.round((100 - totalSharePct) * 100) / 100;
+    const requestedShare = parseFloat(newDirShare) || 0;
+    if (requestedShare > availableShare) {
+      setAddDirError(`Collective share cannot exceed 100%. Already allocated: ${totalSharePct}%. Maximum available: ${availableShare}%.`);
+      return;
+    }
     setAddDirSubmitting(true);
     try {
       await api.post('/directors', {
@@ -285,6 +291,12 @@ export default function DirectorEquityDashboard() {
     e.preventDefault();
     if (!editingDirector) return;
     setEditDirError('');
+    const availableShare = Math.round((100 - (totalSharePct - (Number(editingDirector.share_percentage) || 0))) * 100) / 100;
+    const requestedShare = parseFloat(editDirShare) || 0;
+    if (requestedShare > availableShare) {
+      setEditDirError(`Collective share cannot exceed 100%. Other partners hold: ${Math.round((totalSharePct - (Number(editingDirector.share_percentage) || 0)) * 100) / 100}%. Maximum available: ${availableShare}%.`);
+      return;
+    }
     setEditDirSubmitting(true);
     try {
       await api.put(`/directors/${editingDirector.id}`, {
@@ -1379,7 +1391,7 @@ export default function DirectorEquityDashboard() {
                     allowDecimal
                     required
                   />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">Sum of all partners = 100%</span>
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">Allocated: {totalSharePct}% • Available: {Math.round((100 - totalSharePct) * 100) / 100}% of 100%</span>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-700 block mb-1">Agreed Capital Target (PKR)</label>
@@ -1519,7 +1531,7 @@ export default function DirectorEquityDashboard() {
                     allowDecimal
                     required
                   />
-                  <span className="text-[10px] text-gray-400 mt-0.5 block">Total of all partners = 100%</span>
+                  <span className="text-[10px] text-gray-400 mt-0.5 block">Other partners: {Math.round((totalSharePct - (Number(editingDirector?.share_percentage) || 0)) * 100) / 100}% • Max for this partner: {Math.round((100 - (totalSharePct - (Number(editingDirector?.share_percentage) || 0))) * 100) / 100}%</span>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-gray-700 block mb-1">Agreed Capital Target (PKR)</label>
