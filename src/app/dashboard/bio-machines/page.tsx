@@ -20,6 +20,8 @@ export default function BioMachinesPage() {
   const [toast, setToast] = useState<{ text: string; kind: 'success' | 'error' } | null>(null);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [savingPin, setSavingPin] = useState<string | null>(null);
+  const [classFilter, setClassFilter] = useState('ALL');
+  const [refreshing, setRefreshing] = useState(false);
 
   const showToast = (text: string, kind: 'success' | 'error' = 'success') => {
     setToast({ text, kind });
@@ -111,7 +113,22 @@ export default function BioMachinesPage() {
     }
   };
 
+  const classOptions = Array.from(
+    new Set(users.map((u) => u.student?.class).filter(Boolean))
+  ).sort();
+
+  const handleUpdateAll = async () => {
+    setRefreshing(true);
+    try {
+      await fetchMachines();
+      if (selectedSn) await fetchUsers(selectedSn);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const filtered = users.filter((u) => {
+    if (classFilter !== 'ALL' && u.student?.class !== classFilter) return false;
     if (!search.trim()) return true;
     const q = search.trim().toLowerCase();
     return (
@@ -125,11 +142,19 @@ export default function BioMachinesPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Bio Machines</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Enrolled users per fingerprint machine. Correct names here — every save updates the database and pushes to the machine.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Bio Machines</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Enrolled users per fingerprint machine. Correct names here — every save updates the database and pushes to the machine.
+          </p>
+        </div>
+        <button
+          onClick={handleUpdateAll}
+          className="shrink-0 bg-gray-900 text-white text-xs font-black px-4 py-2.5 rounded-lg hover:bg-gray-700 flex items-center gap-2"
+        >
+          <span className={refreshing ? 'animate-spin' : ''}>⟳</span> {refreshing ? 'UPDATING…' : 'UPDATE'}
+        </button>
       </div>
 
       {toast && (
@@ -204,6 +229,16 @@ export default function BioMachinesPage() {
               </p>
             </div>
             <div className="flex gap-2">
+              <select
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-bold bg-white"
+              >
+                <option value="ALL">All Classes</option>
+                {classOptions.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
