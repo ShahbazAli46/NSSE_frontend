@@ -51,6 +51,31 @@ export interface SchoolSection {
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'leave';
 
+export interface BioMachine {
+  machine_sn: string;
+  users_count: number;
+  pending_names: number;
+  last_registry_seen?: string | null;
+  last_punch_at?: string | null;
+  last_command_status?: string | null;
+  last_command_at?: string | null;
+}
+
+export interface BioDeviceUser {
+  device_user_id: string;
+  device_name?: string | null;
+  name_sync_status: 'in_sync' | 'pending' | 'synced' | 'failed';
+  card_no?: string | null;
+  privilege: number;
+  last_seen_at?: string | null;
+  student?: {
+    id: number;
+    registration_no: string;
+    student_name: string;
+    class: string;
+    section: string;
+  } | null;
+}
 export interface StudentAttendanceRosterItem {
   id: number;
   registration_no: string;

@@ -26,7 +26,8 @@ import {
   Wallet,
   DollarSign,
   Banknote,
-  Calendar
+  Calendar,
+  Fingerprint
 } from 'lucide-react';
 import FloatingChatWidget from '@/components/chat/FloatingChatWidget';
 
@@ -160,6 +161,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           label: 'Student Attendance', 
           href: '/dashboard/students/attendance', 
           icon: UserCheck,
+          roles: ['hr', 'principal', 'office_admin', 'super_admin', 'admin']
+        },
+        { 
+          label: 'Bio Machines', 
+          href: '/dashboard/bio-machines', 
+          icon: Fingerprint,
           roles: ['hr', 'principal', 'office_admin', 'super_admin', 'admin']
         },
       ]
