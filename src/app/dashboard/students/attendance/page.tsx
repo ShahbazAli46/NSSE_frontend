@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { 
   api, 
+  downloadAttendanceReportPdf,
   AttendanceStatus, 
   StudentAttendanceRosterItem, 
   AttendanceClassSheet, 
@@ -100,6 +101,7 @@ export default function StudentAttendancePage() {
   const [teacherName, setTeacherName] = useState<string>('');
   const [teachersList, setTeachersList] = useState<string[]>([]);
   const [isTeacherDropdownOpen, setIsTeacherDropdownOpen] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const teacherDropdownRef = useRef<HTMLDivElement>(null);
 
   const [isLoadingSheet, setIsLoadingSheet] = useState(false);
@@ -273,6 +275,23 @@ export default function StudentAttendancePage() {
   }, [activeTab, fetchClassSheet, fetchDailySummary, fetchMonthlyRegister]);
 
   // Toggle student status (Present <-> Absent on tap)
+  const handleDownloadPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      await downloadAttendanceReportPdf({
+        date: selectedDate,
+        session: selectedSession,
+        class: selectedClass,
+        section: selectedSection,
+        fileName: `attendance_${selectedClass}_${selectedSection}_${selectedDate}.pdf`,
+      });
+    } catch (err: any) {
+      alert(err.message || 'PDF generation failed.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
   const toggleStudentStatus = (studentId: number, newStatus?: AttendanceStatus) => {
     setRoster((prev) =>
       prev.map((item) => {
@@ -527,8 +546,18 @@ export default function StudentAttendancePage() {
           </p>
         </div>
 
-        {/* Global Selectors: Date & Session */}
+        {/* Global Selectors: Date & Session + PDF */}
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Download Branded PDF Report */}
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
+            className="bg-[#0B462C] text-white text-xs font-bold px-4 py-2.5 rounded-lg hover:bg-[#0a3b25] flex items-center gap-2 shrink-0 disabled:opacity-50"
+            title="Download branded PDF report for this class & date"
+          >
+            {downloadingPdf ? 'GENERATING…' : '⬇ Download PDF'}
+          </button>
+
           {/* Custom Date Picker */}
           <div className="w-48 sm:w-52 shrink-0">
             <CustomDatePicker

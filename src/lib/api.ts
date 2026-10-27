@@ -827,6 +827,46 @@ export async function apiRequest<T = any>(
   return data;
 }
 
+export async function downloadAttendanceReportPdf(params: {
+  date: string;
+  session: string;
+  class: string;
+  section: string;
+  fileName: string;
+}): Promise<void> {
+  const qs = new URLSearchParams({
+    date: params.date,
+    session: params.session,
+    class: params.class,
+    section: params.section,
+  }).toString();
+
+  const token = getAuthToken();
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${API_BASE_URL}/student-attendances/daily-report-pdf?${qs}`, { headers });
+
+  if (res.status === 401) {
+    clearSession();
+    throw new Error('Your 24-hour session has expired. Please log in again.');
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.message || 'PDF generation failed.');
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = params.fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export const api = {
   get: <T = any>(endpoint: string) => apiRequest<T>(endpoint, { method: 'GET' }),
   post: <T = any>(endpoint: string, body?: any) =>
