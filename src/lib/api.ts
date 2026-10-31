@@ -22,6 +22,8 @@ export interface Student {
   photo_path?: string | null;
   photo_url?: string | null;
   status: string;
+  bio_user_id?: string | null;
+  nsse_ref?: string | null;
   notes?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -64,6 +66,7 @@ export interface BioMachine {
 export interface BioDeviceUser {
   device_user_id: string;
   device_name?: string | null;
+  pending_name?: string | null;
   name_sync_status: 'in_sync' | 'pending' | 'synced' | 'failed';
   card_no?: string | null;
   privilege: number;
@@ -74,6 +77,8 @@ export interface BioDeviceUser {
     student_name: string;
     class: string;
     section: string;
+    nsse_ref?: string | null;
+    bio_user_id?: string | null;
   } | null;
 }
 export interface StudentAttendanceRosterItem {

@@ -23,6 +23,20 @@ export default function BioMachinesPage() {
   const [classFilter, setClassFilter] = useState('ALL');
   const [refreshing, setRefreshing] = useState(false);
 
+  // Update info modal state
+  const [updateModal, setUpdateModal] = useState<{
+    open: boolean;
+    pin: string | null;
+    loading: boolean;
+    form: {
+      student_name: string;
+      class: string;
+      section: string;
+      nsse_ref: string;
+      bio_user_id: string;
+    };
+  }>({ open: false, pin: null, loading: false, form: { student_name: '', class: '', section: '', nsse_ref: '', bio_user_id: '' } });
+
   const showToast = (text: string, kind: 'success' | 'error' = 'success') => {
     setToast({ text, kind });
     setTimeout(() => setToast(null), 4000);
@@ -45,7 +59,7 @@ export default function BioMachinesPage() {
       const res: any = await api.get(`/bio-machines/${encodeURIComponent(sn)}/users`);
       setUsers(res.users || []);
     } catch (err: any) {
-      showToast(err.message || 'Failed to load machine users.', 'error');
+      showToast(err.message || 'Failed to load machine students.', 'error');
     } finally {
       setLoadingUsers(false);
     }
@@ -62,17 +76,6 @@ export default function BioMachinesPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSn]);
-
-  // While anything is still syncing to a machine, keep polling quietly.
-  const hasPending = users.some((u) => u.name_sync_status === 'pending') || machines.some((m) => m.pending_names > 0);
-  useEffect(() => {
-    if (!hasPending) return;
-    const t = setInterval(() => {
-      fetchMachines();
-      if (selectedSn) fetchUsers(selectedSn);
-    }, 8000);
-    return () => clearInterval(t);
-  }, [hasPending, selectedSn, fetchMachines, fetchUsers]);
 
   const handlePullUsers = async (sn: string) => {
     try {
@@ -99,10 +102,9 @@ export default function BioMachinesPage() {
         { name }
       );
       showToast(res.message || 'Name saved — syncing to machine…');
-      // Optimistic local state; the 8s poll confirms when the device ACKs.
       setUsers((prev) => prev.map((row) =>
         row.device_user_id === u.device_user_id
-          ? { ...row, name_sync_status: 'pending', student: row.student ? { ...row.student, student_name: name } : null }
+          ? { ...row, pending_name: name, name_sync_status: 'pending', student: row.student ? { ...row.student, student_name: name } : null }
           : row
       ));
       setEdits((prev) => ({ ...prev, [u.device_user_id]: '' }));
@@ -110,6 +112,45 @@ export default function BioMachinesPage() {
       showToast(err.message || 'Failed to save name.', 'error');
     } finally {
       setSavingPin(null);
+    }
+  };
+
+  const openUpdateInfo = (u: BioDeviceUser) => {
+    setUpdateModal({
+      open: true,
+      pin: u.device_user_id,
+      loading: false,
+      form: {
+        student_name: u.student?.student_name || u.device_name || '',
+        class: u.student?.class || '',
+        section: u.student?.section || '',
+        nsse_ref: u.student?.nsse_ref || '',
+        bio_user_id: u.student?.bio_user_id || u.device_user_id,
+      },
+    });
+  };
+
+  const handleUpdateInfo = async () => {
+    if (!selectedSn || !updateModal.pin) return;
+    if (!updateModal.form.student_name.trim()) {
+      showToast('Student name is required.', 'error');
+      return;
+    }
+
+    setUpdateModal((prev) => ({ ...prev, loading: true }));
+    try {
+      const res: any = await api.post(
+        `/bio-machines/${encodeURIComponent(selectedSn)}/users/${encodeURIComponent(updateModal.pin)}/update-info`,
+        updateModal.form
+      );
+      showToast(res.message || 'Student info updated — syncing to machine…');
+
+      // Refresh users to reflect changes
+      if (selectedSn) await fetchUsers(selectedSn);
+      setUpdateModal((prev) => ({ ...prev, open: false, loading: false }));
+    } catch (err: any) {
+      showToast(err.message || 'Failed to update student info.', 'error');
+      setUpdateModal((prev) => ({ ...prev, loading: false }));
     }
   };
 
@@ -146,7 +187,7 @@ export default function BioMachinesPage() {
         <div>
           <h1 className="text-2xl md:text-3xl font-black text-gray-900 tracking-tight">Bio Machines</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Enrolled users per fingerprint machine. Correct names here — every save updates the database and pushes to the machine.
+            Enrolled students per fingerprint machine. Correct names here — every save updates the database and pushes to the machine.
           </p>
         </div>
         <button
@@ -184,7 +225,7 @@ export default function BioMachinesPage() {
                 <div>
                   <div className="font-black text-gray-900">SN: {m.machine_sn}</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {m.users_count > 0 ? `${m.users_count} enrolled users` : 'User list not pulled yet'}
+                    {m.users_count > 0 ? `${m.users_count} enrolled students` : 'Student list not pulled yet'}
                   </div>
                 </div>
                 {m.users_count > 0 && m.pending_names > 0 && (
@@ -204,13 +245,13 @@ export default function BioMachinesPage() {
                   onClick={(e) => { e.stopPropagation(); setSelectedSn(m.machine_sn); }}
                   className="flex-1 bg-gray-900 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-gray-700"
                 >
-                  View Users
+                  View Students
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); handlePullUsers(m.machine_sn); }}
                   className="flex-1 bg-emerald-600 text-white text-xs font-bold px-3 py-2 rounded-lg hover:bg-emerald-500"
                 >
-                  ⇩ Pull Users
+                  ⇩ Pull Students
                 </button>
               </div>
             </div>
@@ -223,9 +264,9 @@ export default function BioMachinesPage() {
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center gap-3 justify-between">
             <div>
-              <h2 className="font-black text-gray-900">Enrolled Users — SN {selectedSn}</h2>
+              <h2 className="font-black text-gray-900">Enrolled Students — SN {selectedSn}</h2>
               <p className="text-xs text-gray-500 mt-0.5">
-                Name edits save to the school database and are pushed to the machine automatically.
+                Update info to assign class, section, NSSE ref and link to the database. Name is also pushed to the machine.
               </p>
             </div>
             <div className="flex gap-2">
@@ -255,10 +296,10 @@ export default function BioMachinesPage() {
           </div>
 
           {loadingUsers ? (
-            <div className="text-center py-10 text-gray-400 font-semibold">Loading enrolled users…</div>
+            <div className="text-center py-10 text-gray-400 font-semibold">Loading enrolled students…</div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-10 text-gray-400 font-semibold">
-              No users recorded yet. Press <span className="text-emerald-600 font-black">⇩ Pull Users</span> on the machine card above —
+              No students recorded yet. Press <span className="text-emerald-600 font-black">⇩ Pull Students</span> on the machine card above —
               the machine uploads its full enrollment list within seconds.
             </div>
           ) : (
@@ -270,6 +311,7 @@ export default function BioMachinesPage() {
                     <th className="px-4 py-3 text-left font-black">Name on Device</th>
                     <th className="px-4 py-3 text-left font-black">Matched Student (Database)</th>
                     <th className="px-4 py-3 text-left font-black">Correct Name → Device</th>
+                    <th className="px-4 py-3 text-left font-black">Actions</th>
                     <th className="px-4 py-3 text-left font-black">Sync</th>
                   </tr>
                 </thead>
@@ -279,12 +321,20 @@ export default function BioMachinesPage() {
                     return (
                       <tr key={u.device_user_id} className="border-t border-gray-100 hover:bg-gray-50">
                         <td className="px-4 py-3 font-bold text-gray-900">{u.device_user_id}</td>
-                        <td className="px-4 py-3 text-gray-600">{u.device_name || <span className="text-gray-300">—</span>}</td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {u.device_name || <span className="text-gray-300">—</span>}
+                          {u.pending_name && (
+                            <div className="text-xs text-gray-500 mt-1">Requested: {u.pending_name}</div>
+                          )}
+                        </td>
                         <td className="px-4 py-3 text-gray-600">
                           {u.student ? (
                             <div>
                               <div className="font-bold text-gray-900">{u.student.student_name}</div>
-                              <div className="text-[11px] text-gray-400">{u.student.registration_no} · {u.student.class} ({u.student.section})</div>
+                              <div className="text-[11px] text-gray-400">
+                                {u.student.registration_no} · {u.student.class} ({u.student.section})
+                                {u.student.nsse_ref ? ` · NSSE: {u.student.nsse_ref}` : ''}
+                              </div>
                             </div>
                           ) : (
                             <span className="text-gray-300 text-xs">Not enrolled in directory</span>
@@ -308,6 +358,15 @@ export default function BioMachinesPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3">
+                          <button
+                            onClick={() => openUpdateInfo(u)}
+                            disabled={savingPin === u.device_user_id || updateModal.loading}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg disabled:opacity-50 transition-colors"
+                          >
+                            {savingPin === u.device_user_id ? 'SAVING…' : 'Update Info'}
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
                           <span className={`text-[10px] font-black px-2 py-1 rounded-full ${badge.cls}`}>{badge.label}</span>
                         </td>
                       </tr>
@@ -317,6 +376,112 @@ export default function BioMachinesPage() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Update Info Modal */}
+      {updateModal.open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setUpdateModal((prev) => ({ ...prev, open: false }))} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-black text-gray-900 text-lg">Update Student Info</h2>
+              <button
+                onClick={() => setUpdateModal((prev) => ({ ...prev, open: false }))}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Device ID</label>
+                <input
+                  type="text"
+                  value={updateModal.pin || ''}
+                  readOnly
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Student Name *</label>
+                <input
+                  type="text"
+                  value={updateModal.form.student_name}
+                  onChange={(e) => setUpdateModal((prev) => ({ ...prev, form: { ...prev.form, student_name: e.target.value } }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="Full name as on machine"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Class</label>
+                <input
+                  type="text"
+                  value={updateModal.form.class}
+                  onChange={(e) => setUpdateModal((prev) => ({ ...prev, form: { ...prev.form, class: e.target.value } }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="e.g. Grade 5"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Section</label>
+                <input
+                  type="text"
+                  value={updateModal.form.section}
+                  onChange={(e) => setUpdateModal((prev) => ({ ...prev, form: { ...prev.form, section: e.target.value } }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="e.g. A"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">NSSE Ref</label>
+                <input
+                  type="text"
+                  value={updateModal.form.nsse_ref}
+                  onChange={(e) => setUpdateModal((prev) => ({ ...prev, form: { ...prev.form, nsse_ref: e.target.value } }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="NSSE reference number"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-700 mb-1">Bio User ID (Machine PIN)</label>
+                <input
+                  type="text"
+                  value={updateModal.form.bio_user_id}
+                  onChange={(e) => setUpdateModal((prev) => ({ ...prev, form: { ...prev.form, bio_user_id: e.target.value } }))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  placeholder="Device enrollment PIN"
+                />
+              </div>
+
+              <div className="pt-2 text-xs text-gray-500">
+                * Name will be pushed to the machine on its next poll. Class, section, NSSE ref and Bio User ID are saved to the school database.
+              </div>
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setUpdateModal((prev) => ({ ...prev, open: false }))}
+                className="flex-1 bg-gray-200 text-gray-800 font-bold px-4 py-2.5 rounded-lg hover:bg-gray-300 disabled:opacity-50"
+                disabled={updateModal.loading}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdateInfo}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2.5 rounded-lg disabled:opacity-50 transition-colors"
+                disabled={updateModal.loading || !updateModal.form.student_name.trim()}
+              >
+                {updateModal.loading ? 'UPDATING…' : 'Update Info'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
